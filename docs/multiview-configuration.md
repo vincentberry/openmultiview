@@ -31,6 +31,18 @@ Le thème est enregistré dans les modèles, le compagnon local et les URL de
 rappel (`Theme` et `Config`). Les anciens liens sans thème conservent le rendu
 classique, y compris le réglage audio historique des sorties.
 
+Dans la même carte, **Texte de toutes les vignettes** règle la position du texte,
+son fond et sa taille pour tous les écrans du PC. Cliquez **Appliquer à tous les
+écrans** pour remplacer ces trois réglages sur les vignettes existantes. Les
+nouvelles vignettes et les nouveaux écrans héritent aussi de ces valeurs. Les
+deux thèmes les utilisent ; les couleurs, l’audio, les sources et leurs IDs
+restent conservés. Chaque layer peut ensuite être ajusté individuellement.
+
+Le **Plan des layers** représente l’habillage choisi : libellés centrés en
+Classique, bandeaux en OpenMultiview, position du texte, fond transparent ou
+coloré et tally provenant de l’état actuel de vMix. Le contour de sélection est
+séparé du tally. Le plan ne fournit pas de retour vidéo.
+
 ## Démarrage sur le PC vMix
 
 Avec Node.js installé, lancer dans le dossier du projet :

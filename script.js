@@ -234,7 +234,7 @@ function getSourceInputLabel(ref){
 }
 
 function getDefaultTileSettings(inputKey, hideOutputAudio = vMixSettings.hideOutputAudioByDefault){
-    var defaultSettings = MultiviewModel.tileDefaultsFor(vMixSettings.theme);
+    var defaultSettings = MultiviewModel.tileDefaultsFor(vMixSettings.theme, vMixSettings.textStyle);
 
     var input = getInputStateByKey(inputKey);
     if(hideOutputAudio && input && (/^Output$/i.test(input.type || "") || MultiviewModel.role(input) === "PGM")){
@@ -784,12 +784,8 @@ function updateTally(force){
         var settings = getTileSettings(overlay.layerKey, overlay.inputKey);
         var tile = $(document.getElementById(overlay.layerKey));
 
-        if(settings.tally && overlay.inputKey === vMixSettings.previewKey){
-            tile.addClass("preview");
-        }
-        if(settings.tally && overlay.inputKey === vMixSettings.programKey){
-            tile.addClass("program");
-        }
+        var tally = MultiviewModel.tallyState(settings, overlay.inputKey, vMixSettings.previewKey, vMixSettings.programKey);
+        if(tally) tile.addClass(tally);
     });
 
     vMixSettings.previousPreviewKey = vMixSettings.previewKey

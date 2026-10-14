@@ -1,6 +1,12 @@
 (function(root) {
     const catalog = typeof module !== 'undefined' ? require('./locales.js') : root.OpenMultiviewLocales;
     catalog.text.push(
+        ['Texte de toutes les vignettes', 'Text for all tiles', 'Texto de todas las miniaturas'],
+        ['Réglages communs à tous les écrans de ce PC, en Classique comme en OpenMultiview.', 'Shared settings for every screen on this PC, in both Classic and OpenMultiview.', 'Ajustes comunes a todas las pantallas de este PC, tanto en Clásico como en OpenMultiview.'],
+        ['Appliquer à tous les écrans', 'Apply to every screen', 'Aplicar a todas las pantallas'],
+        ['Remplace ces trois réglages sur toutes les vignettes. Vous pouvez ensuite ajuster chaque layer.', 'Replaces these three settings on every tile. You can then adjust individual layers.', 'Sustituye estos tres ajustes en todas las miniaturas. Después puedes ajustar cada layer.'],
+        ['Réglages du texte appliqués à tous les écrans de ce PC.', 'Text settings applied to every screen on this PC.', 'Ajustes de texto aplicados a todas las pantallas de este PC.'],
+        ['Réglages du texte invalides. Choisissez une taille entre 8 et 100.', 'Invalid text settings. Choose a size between 8 and 100.', 'Ajustes de texto no válidos. Elige un tamaño entre 8 y 100.'],
         ['Votre régie, à votre mesure.', 'Your control room, your way.', 'Tu control de realización, a tu medida.'],
         ['OpenMultiview · Configuration du multiview vMix', 'OpenMultiview · vMix multiview configuration', 'OpenMultiview · Configuración del multiview vMix'],
         ['OpenMultiview · Multiview vMix', 'OpenMultiview · vMix multiview', 'OpenMultiview · Multiview vMix'],

@@ -158,6 +158,7 @@
         }
         const s = state.screens[screenIndex];
         vMixSettings.theme = M.themeFor(s);
+        vMixSettings.textStyle = state.textStyle;
         vMixSettings.IP = state.host;
         vMixSettings.port = state.port;
         vMixSettings.multiViewInputs = M.clone(s.inputs);
@@ -352,7 +353,12 @@
         <button type="button" role="tab" id="tab-recall" data-view="recall" aria-controls="view-recall">Sauvegarde & URL</button></nav>
         <p id="studioNotice" role="status" aria-live="polite"></p>
         <div class="workspace"><main>
-        <section class="studio-view" id="view-layouts" role="tabpanel" aria-labelledby="tab-layouts"><section class="studio-card theme-card" aria-labelledby="themeHeading"><div class="section-intro"><span class="section-kicker">01 / HABILLAGE</span><h2 id="themeHeading">Le style de cet écran</h2><p>Un thème par écran, conservé dans vos modèles et vos URL.</p></div><div id="themeChoices" class="theme-choices" role="group" aria-label="Thème du multiview"></div><p class="theme-help">Appliqué immédiatement aux pages connectées. Vos réglages de texte, d’audio et vos couleurs personnalisées sont conservés.</p></section><div class="studio-card"><div class="section-intro"><span class="section-kicker">02 / DISPOSITION</span><h2>Modèles de disposition</h2><p>Vignettes 16:9. Choisissez un modèle pour créer les entrées nécessaires dans vMix.</p></div>
+        <section class="studio-view" id="view-layouts" role="tabpanel" aria-labelledby="tab-layouts"><section class="studio-card theme-card" aria-labelledby="themeHeading"><div class="section-intro"><span class="section-kicker">01 / HABILLAGE</span><h2 id="themeHeading">Le style de cet écran</h2><p>Un thème par écran, conservé dans vos modèles et vos URL.</p></div><div id="themeChoices" class="theme-choices" role="group" aria-label="Thème du multiview"></div><p class="theme-help">Appliqué immédiatement aux pages connectées. Vos réglages de texte, d’audio et vos couleurs personnalisées sont conservés.</p>
+        <fieldset class="shared-text-settings"><legend>Texte de toutes les vignettes</legend><p>Réglages communs à tous les écrans de ce PC, en Classique comme en OpenMultiview.</p><div class="style-grid">
+        <label class="style-field">Position du texte<select id="sharedTitlePosition"><option value="overlay-bottom">Sur l’image, en bas</option><option value="overlay-top">Sur l’image, en haut</option><option value="below">Sous la vignette</option><option value="above">Au-dessus</option></select></label>
+        <label class="style-field">Fond du texte<select id="sharedTitleBackground"><option value="true">Avec fond</option><option value="false">Transparent</option></select></label>
+        <label class="style-field">Taille du texte<input id="sharedTitleFontSize" type="number" min="8" max="100" step="1"></label></div>
+        <small>Avec un fond transparent, le tally colore le texte.</small><div class="shared-text-actions"><button id="applySharedText" class="primary-button" type="button">Appliquer à tous les écrans</button><small>Remplace ces trois réglages sur toutes les vignettes. Vous pouvez ensuite ajuster chaque layer.</small></div></fieldset></section><div class="studio-card"><div class="section-intro"><span class="section-kicker">02 / DISPOSITION</span><h2>Modèles de disposition</h2><p>Vignettes 16:9. Choisissez un modèle pour créer les entrées nécessaires dans vMix.</p></div>
         <div class="spacing-controls"><label for="presetSpacing">Espacement entre les vignettes</label><div class="spacing-inputs"><input id="presetSpacingSlider" type="range" min="0" max="20" step="1" aria-label="Espacement des vignettes" aria-describedby="spacingHelp"><div class="spacing-number"><input id="presetSpacing" type="number" min="0" max="20" step="1" aria-label="Espacement en pourcentage" aria-describedby="spacingHelp"><span>%</span></div><button id="applySpacing" type="button">Appliquer l’espacement</button></div><small id="spacingHelp">0 % réduit les marges au minimum. Ajoutez de l’espace pour du texte ou des vumètres placés à l’extérieur.</small></div>
         <div class="layout-filters" role="group" aria-label="Filtrer les dispositions"><button type="button" data-layout-filter="all" aria-pressed="true">Tous</button><button type="button" data-layout-filter="production" aria-pressed="false">Avec PGM / PVW</button><button type="button" data-layout-filter="grid" aria-pressed="false">Grilles</button><button type="button" data-layout-filter="dual" aria-pressed="false">2 écrans</button></div><div id="layoutGallery" class="layout-gallery"></div></div>
         <section class="studio-card"><div class="builder-header"><div><span class="section-kicker">03 / SOURCES</span><h2>Sources du preset</h2><p>Sans sélection, les sources sont affectées automatiquement.</p></div><button id="autoAssignSources" type="button" class="subtle-button">Affectation automatique</button></div>
@@ -415,7 +421,22 @@
         const theme = M.themeFor(state.screens[screenIndex]);
         $('#themeChoices button[data-theme]').each(function() { $(this).attr('aria-pressed', String(this.dataset.theme === theme)); });
         $('#layoutPreview').attr('data-theme', theme);
+        const text = M.textStyleFor(state);
+        $('#sharedTitlePosition').val(text.titlePosition);
+        $('#sharedTitleBackground').val(String(text.titleBackground));
+        $('#sharedTitleFontSize').val(text.titleFontSize);
     }
+    $('#applySharedText').on('click', () => {
+        if(building || applying) return;
+        const style = {titlePosition: $('#sharedTitlePosition').val(), titleBackground: $('#sharedTitleBackground').val() === 'true', titleFontSize: Number($('#sharedTitleFontSize').val())};
+        try {
+            publish();
+            state = M.applyTextStyle(state, style, vMixInputs);
+            state.updated = M.nextUpdate(state.updated);
+            persist(); loadScreen();
+            notice('Réglages du texte appliqués à tous les écrans de ce PC.');
+        } catch(error) { notice(error.message); }
+    });
     M.themes.forEach(t => {
         $('<button type="button" class="theme-choice">').attr({'data-theme': t.id, 'aria-label': 'Thème ' + t.name, 'aria-pressed': 'false'})
             .append($('<span class="theme-sample" aria-hidden="true">').attr('data-theme', t.id).html('<i class="sample-preview"><span>PREVIEW</span></i><i class="sample-program"><span>PROGRAM</span></i>'),
@@ -581,17 +602,26 @@
         updateSelectedTileSetting(name, value);
     });
     function drawPreview() {
-        const box = $('#layoutPreview').empty();
+        const box = $('#layoutPreview').empty().attr('data-theme', M.themeFor(state.screens[screenIndex]));
         $('#previewHeading').text('Écran ' + (screenIndex + 1) + ' · Plan des layers');
         const layers = editableLayers();
         if(!layers.some(o => !o.disabled && !o.pending)) $('<p class="preview-empty">').text(vMixInputs.length ? 'Choisissez un modèle pour afficher le plan.' : 'Connectez vMix pour préparer votre écran.').appendTo(box);
         layers.forEach((o, n) => {
             if(o.disabled || o.pending) return;
-            $('<button type="button" class="preview-layer">').css({width: o.zoomX + '%', height: o.zoomY + '%', left: (o.panX / 2 + 50) + '%', top: (-o.panY / 2 + 50) + '%'})
-                .append($('<span>').text(o.role || (layers.length <= 4 && o.inputName.length <= 16 ? o.inputName : String(n + 1))))
+            const settings = getTileSettings(o.layerKey, o.inputKey);
+            const tally = M.tallyState(settings, o.inputKey, vMixSettings.previewKey, vMixSettings.programKey);
+            const frame = settings.enabled && settings.frame ? Math.max(0, Number(settings.borderWidth) || 0) : 0;
+            const button = $('<button type="button" class="preview-layer">').addClass(tileSettingsClasses(o)).addClass(tally)
+                .css({width: o.zoomX + '%', height: o.zoomY + '%', left: (o.panX / 2 + 50 - o.zoomX / 2) + '%', top: (-o.panY / 2 + 50 - o.zoomY / 2) + '%',
+                    '--preview-title-size': Math.max(5, Math.min(32, settings.titleFontSize * .32)) + 'px',
+                    '--preview-frame-width': (frame ? Math.max(.5, frame * .32) : 0) + 'px', '--preview-frame-color': settings.borderColor,
+                    '--preview-tally-color': tally === 'program' ? settings.programColor : tally === 'preview' ? settings.previewColor : '#ffffff'})
+                .append($('<span class="preview-label" data-source-name>').text(o.inputName).prop('hidden', !settings.enabled || !settings.name))
                 .attr('data-role', o.role || '')
+                .attr('data-input-key', o.inputKey)
                 .attr({title: o.layerName + ' · ' + o.inputName, 'aria-label': 'Configurer la vignette ' + (n + 1) + ' · ' + o.inputName, 'aria-pressed': String(o.layerKey === vMixSettings.selectedInputKey)})
                 .on('click', () => selectLayer(o.layerKey)).appendTo(box);
+            if(settings.enabled && settings.name && M.themeFor(state.screens[screenIndex]) === 'openmultiview' && o.role) button.append($('<i class="preview-role">').text(o.role === 'PGM' ? 'PROGRAM' : 'PREVIEW'));
         });
     }
     function renderBuilderSources() {
@@ -982,7 +1012,7 @@
         // New inputs must appear in the picker even when existing layers stay
         // unchanged. The picker keeps its DOM when its source list is stable.
         renderBuilderSources();
-        const signature = JSON.stringify([screenIndex, editableLayers(), vMixInputs.map(i => [i.key, i.number, i.title, i.type])]);
+        const signature = JSON.stringify([screenIndex, vMixSettings.previewKey, vMixSettings.programKey, editableLayers(), vMixInputs.map(i => [i.key, i.number, i.title, i.type])]);
         if(signature !== controlLayersSignature) {
             controlLayersSignature = signature;
             renderSourceInputs(); renderLayerPicker(); renderLayerFields(); drawPreview();

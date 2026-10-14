@@ -313,3 +313,19 @@ test('browser navigation uses a short PC reference after bridge save and resolve
     assert.deepEqual(M.pack(view.recalled()), M.pack(config));
     assert.deepEqual(M.clone(view.scope.vMixSettings.multiViewInputs), ['root-1']);
 });
+
+test('shared text defaults and later individual overrides restore from portable URLs and the PC bridge', async () => {
+    const config={version:1,pc:'text-demo',host:'127.0.0.1',port:'8767',updated:2,
+        textStyle:{titlePosition:'below',titleBackground:false,titleFontSize:29},
+        screens:[{...M.screen(['root']),theme:'classic',tiles:[{key:'individual',value:{titleFontSize:42}}]}]};
+    for(const linked of [false,true]) {
+        const view=viewer(M.recallURL('http://localhost/',config,0,{linked}),{remote:config,studio:true});
+        await new Promise(resolve=>setImmediate(resolve));
+        const general=view.scope.getTileSettings('new-layer');
+        assert.equal(general.titleFontSize,29);
+        assert.equal(general.titleBackground,false);
+        assert.equal(general.titlePosition,'below');
+        assert.equal(view.scope.getTileSettings('individual').titleFontSize,42);
+        assert.deepEqual(view.recalled().textStyle,config.textStyle);
+    }
+});
