@@ -4,6 +4,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const M = require('./multiview-model');
+const I = require('./i18n');
 const root = __dirname;
 const dataDir = process.env.MULTIVIEW_DATA_DIR || path.join(process.env.LOCALAPPDATA || require('node:os').homedir(), 'multiview-vmix');
 const port = Number(process.env.MULTIVIEW_PORT || 8090);
@@ -11,6 +12,10 @@ const types = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 const assets = new Set(['index.html', 'config.html', 'config.css', 'player.html', 'script.js', 'studio.js', 'multiview-model.js', 'multiview-builder.js', 'script_player.js', 'jquery.js', 'style.css', 'studio.css', 'style_player.css', 'favicon.ico', 'mask.png', 'loop.png']);
 ['home.html', 'guide.html', 'privacy.html', 'site.css', 'site.js', 'site.webmanifest', 'robots.txt', 'sitemap.xml', 'assets/openmultiview-logo.png', 'assets/openmultiview-icon.png', 'assets/social-card.jpg'].forEach(name => assets.add(name));
 assets.add('assets/social-card.html');
+['assets/social-card-en.jpg','assets/social-card-es.jpg'].forEach(name => assets.add(name));
+['locales.js','locales-studio.js','locales-docs.js','i18n.js'].forEach(name => assets.add(name));
+const localizedPages = new Map(I.languages.filter(lang => lang !== 'fr').flatMap(lang => ['home.html','guide.html','privacy.html'].map(page => [I.pageName(page, lang), {page,lang}])));
+for(const lang of ['en','es']) localizedPages.set('assets/social-card.' + lang + '.html', {page:'assets/social-card.html', lang});
 const applicationParameters = ['Input', 'Inputs', 'Input2', 'Settings', 'MaskSettings', 'PC', 'Screen', 'Config', 'IP', 'Port'];
 const writes = new Map();
 function respond(res, status, data) {
@@ -98,8 +103,11 @@ function createServer({now = Date.now, publicOrigins = [...M.PUBLIC_ORIGINS, ...
             if(req.method !== 'GET' && req.method !== 'HEAD') return respond(res, 405, {error: 'Méthode non autorisée'});
             const appRoot = [...url.searchParams.keys()].some(key => applicationParameters.some(name => name.toLowerCase() === key.toLowerCase()));
             const name = url.pathname === '/' ? appRoot ? 'index.html' : 'home.html' : url.pathname === '/viewer.html' ? 'index.html' : url.pathname.slice(1);
-            if(!assets.has(name)) return respond(res, 404, {error: 'Fichier introuvable'});
-            const content = await fs.readFile(path.join(root, name));
+            if(!assets.has(name) && !localizedPages.has(name)) return respond(res, 404, {error: 'Fichier introuvable'});
+            const localized = localizedPages.get(name);
+            let content = await fs.readFile(path.join(root, localized ? localized.page : name));
+            if(localized && localized.page === 'assets/social-card.html') content = I.localizeHTML(content.toString(), localized.lang);
+            else if(localized || ['home.html','guide.html','privacy.html'].includes(name)) content = I.publicDocument(content.toString(), localized ? localized.page : name, localized ? localized.lang : 'fr', 'https://vincentberry.github.io/openmultiview/');
             const headers = {'Content-Type': types[path.extname(name)] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer'};
             if(['index.html', 'config.html', 'player.html'].includes(name)) headers['X-Robots-Tag'] = 'noindex, follow';
             res.writeHead(200, headers);

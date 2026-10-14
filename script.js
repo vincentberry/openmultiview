@@ -1,8 +1,5 @@
-var vars = {};
 var mySettingMask = [];
-var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
-    vars[key] = value;
-});
+var sourceParameters = MultiviewModel.urlParameters(window.location.href);
 
 function escapeHTML(value) {
     return String(value == null ? "" : value).replace(/[&<>"']/g, function(c) { return {"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[c]; });
@@ -151,7 +148,6 @@ var extras = [
 ]
 
 
-var sourceParameters = new URLSearchParams(window.location.search);
 if(sourceParameters.has("Inputs")){
     vMixSettings.multiViewInputs = sourceParameters.get("Inputs").split(",").map(MultiviewModel.parseSourceReference).filter(function(ref){ return ref !== undefined; });
 }
@@ -169,9 +165,6 @@ if(vMixSettings.multiViewInputs.length == 0){
     vMixSettings.multiViewInputs = [0];
 }
 
- if(vars["Interval"]){
-    //vMixSettings.refreshInterval = parseFloat(vars["Interval"]);
- }
  try {
  if(sourceParameters.has("Settings")){
     var parsedSettings = JSON.parse(sourceParameters.get("Settings"));
@@ -192,8 +185,8 @@ if(vMixSettings.multiViewInputs.length == 0){
  }
  } catch(error) { console.warn("Paramètre MaskSettings invalide", error); }
 
-if(vars.IP) vMixSettings.IP = decodeURIComponent(vars.IP);
-if(vars.Port) vMixSettings.port = decodeURIComponent(vars.Port);
+if(sourceParameters.has("IP")) vMixSettings.IP = sourceParameters.get("IP");
+if(sourceParameters.has("Port")) vMixSettings.port = sourceParameters.get("Port");
 var pollPending = false;
 setInterval(() => {
     if(pollPending) return;
@@ -752,7 +745,7 @@ function refresh(){
             saveArray[i][setting] = extra[setting]
         })
     });
-    $("#saveURL").val(window.location.origin + window.location.pathname +"?Inputs="+ sourceInputsQuery() + "&Settings=" + encodeURIComponent(JSON.stringify(saveArray)) + "&MaskSettings=" + encodeURIComponent(JSON.stringify(mySettingMask)))
+    $("#saveURL").val(MultiviewModel.safeURL(window.location.origin + window.location.pathname +"?Inputs="+ sourceInputsQuery() + "&Settings=" + encodeURIComponent(JSON.stringify(saveArray)) + "&MaskSettings=" + encodeURIComponent(JSON.stringify(mySettingMask))))
     renderSourceInputs();
    
     $(".outerContainer").attr("data-theme", vMixSettings.theme || "classic").html("")

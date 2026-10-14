@@ -114,4 +114,7 @@ test('static legacy dispatch preserves source IDs, settings and fragments byte f
     let queried;
     vm.runInNewContext(source, {URL, URLSearchParams, location: {search: '?utm_source=github'}, document: {getElementById: value => {queried = value; return null;}}});
     assert.equal(queried, 'demoScreen');
+    const hash = '#Inputs=key%3Ademo&Config=%7B%22v%22%3A1%7D';
+    vm.runInNewContext(source, {URL, URLSearchParams, location: {href: 'https://example.com/app/index.html' + hash, search: '', hash, replace: value => destination = value}});
+    assert.equal(destination, 'https://example.com/app/viewer.html' + hash);
 });

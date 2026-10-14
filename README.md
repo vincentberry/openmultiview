@@ -7,7 +7,7 @@ monitor Preview/Program tally and audio, and recall your screens by URL.
 
 [Public website](https://vincentberry.github.io/openmultiview/) ·
 [Getting started](https://vincentberry.github.io/openmultiview/guide.html) ·
-[Français](README.fr.md) · [MIT license](LICENSE)
+[Français](README.fr.md) · [Español](README.es.md) · [MIT license](LICENSE)
 
 ![OpenMultiview — your vMix multiview, your layout](assets/social-card.jpg)
 
@@ -32,6 +32,8 @@ preview is an illustration, not a live video feed.
 - Media countdown, loop indicator and VideoList title/elapsed-time information.
 - Separate configuration and display pages, connected-page status and URL recall.
 - Backwards-compatible `Inputs`, `Settings` and `MaskSettings` links.
+- French, English and Spanish UI, with a saved language preference. Source
+  names and vMix IDs stay unchanged; recall URLs can include `Lang=en` or `Lang=es`.
 
 ## Quick start on the vMix PC
 
@@ -73,10 +75,13 @@ Chrome and vMix use different browser profiles, so live synchronization between
 them needs the companion. Browsers may require permission for local-network
 access; the local configuration is the fallback if an embedded browser cannot
 connect from HTTPS. A complete URL can still recall a display without the
-companion, subject to the host's URL-length limits.
+companion. Large configurations put their settings after `#`, keeping the HTTP
+request short to avoid “URI Too Long”. Keep the entire URL to recall both screens
+and all settings after a restart.
 
 A recall URL contains source IDs, API address and settings. Anyone receiving it
-can read those values, and public-host requests may appear in that host's logs.
+can read those values. Parameters before `#` may appear in the host's logs;
+the fragment after `#` is not sent in the HTTP request.
 Use local pages if those requests should stay on the PC. See
 [Confidentiality](https://vincentberry.github.io/openmultiview/privacy.html).
 

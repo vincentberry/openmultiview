@@ -4,7 +4,7 @@
     const M = MultiviewModel;
     const B = MultiviewBuilder;
     const control = document.body.classList.contains('config-page');
-    const query = new URLSearchParams(location.search);
+    const query = M.urlParameters(location.href);
     let screenIndex = Math.min(M.MAX_SCREENS - 1, Math.max(0, Math.floor(Number(query.get('Screen')) || 1) - 1));
     let applying = false;
     let receiving = false;
@@ -72,16 +72,16 @@
     if(control && screenIndex >= state.screens.length) screenIndex = 0;
 
     function url(index, config = false) {
-        return M.recallURL(location.href, state, index, {configPage: config, inputs: vMixInputs});
+        return M.recallURL(location.href, state, index, {configPage: config, inputs: vMixInputs, language: window.OpenMultiviewI18n?.language()});
     }
     async function browserURL(index) {
         if(!bridge) return url(index);
-        // Save before navigating CEF. The legacy fields also work in old clients;
-        // the PC bridge recalls the complete configuration in the current viewer.
+        // Save before navigating CEF. A short PC/screen link also keeps the
+        // BrowserNavigate API command below vMix's request-size limit.
         clearTimeout(bridgeWriteTimer);
         const response = await fetchWithTimeout(bridgeURL(), {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(state)});
         if(!response.ok) throw new Error('La configuration locale n’a pas pu être enregistrée avant le chargement de la source HTML.');
-        return M.recallURL(location.href, state, index, {portable: false, inputs: vMixInputs});
+        return M.recallURL(location.href, state, index, {linked: true, language: window.OpenMultiviewI18n?.language()});
     }
     function links() {
         const expanded = new Set($('#screenLinks details[open]').map(function() { return this.dataset.screen; }).get());
@@ -99,11 +99,15 @@
             }).appendTo(actions);
             row.appendTo(box);
         });
-        $('#saveURL').val(url(screenIndex));
-        $('#openCurrentScreen').attr('href', url(screenIndex));
-        $('#configureLink').attr('href', url(screenIndex, true));
-        if(control) history.replaceState(null, '', url(screenIndex, true));
+        // A fresh CEF profile may request screen 2 before the bridge has sent
+        // that screen. Keep a valid configuration link during this first poll.
+        const currentIndex = Math.min(screenIndex, state.screens.length - 1);
+        $('#saveURL').val(url(currentIndex));
+        $('#openCurrentScreen').attr('href', url(currentIndex));
+        $('#configureLink').attr('href', url(currentIndex, true));
+        if(control) history.replaceState(null, '', url(currentIndex, true));
     }
+    window.addEventListener('openmultiview-language', links);
     function publish() {
         if(receiving || building || !control) return;
         const next = snapshotScreen();
@@ -519,7 +523,7 @@
             layers.forEach((l, n) => {
                 $('<button type="button" class="layer-row">').attr({'data-layer-key': l.layerKey, 'aria-label': 'Configurer layer ' + l.layerNumber + ' · ' + l.inputName})
                     .append($('<span class="layer-number">').text(String(n + 1).padStart(2, '0')),
-                        $('<span class="layer-row-content">').append($('<strong>').text(l.disabled ? 'Layer ' + l.layerNumber + ' désactivé' : l.inputName), $('<small>').text('Entrée ' + l.sourceNumber + ' · Layer ' + l.layerNumber + (l.pending ? ' · En attente de vMix' : '')))).appendTo(l.disabled ? inactive : list);
+                        $('<span class="layer-row-content">').append($('<strong>').attr('data-source-name', l.disabled ? null : '').text(l.disabled ? 'Layer ' + l.layerNumber + ' désactivé' : l.inputName), $('<small>').text('Entrée ' + l.sourceNumber + ' · Layer ' + l.layerNumber + (l.pending ? ' · En attente de vMix' : '')))).appendTo(l.disabled ? inactive : list);
             });
             if(!layers.length) list.append('<p class="empty-message">Appliquez un preset dans Disposition pour créer les vignettes.</p>');
         }
@@ -535,7 +539,7 @@
         const s = state.screens[screenIndex];
         const blank = (s.layerSources || []).some(r => r.parent === layer.sourceKey && r.layer === layer.layerNumber && r.source === null);
         const parent = M.resolveSource(vMixInputs, layer.sourceKey);
-        details.append($('<strong>').text(blank ? 'Layer désactivé' : layer.inputName), $('<span>').text('Entrée ' + layer.sourceNumber + ' · Layer ' + layer.layerNumber + (parent ? ' — ' + parent.title : '')), $('<code>').text('ID de l’entrée : ' + layer.sourceKey));
+        details.append($('<strong>').attr('data-source-name', blank ? null : '').text(blank ? 'Layer désactivé' : layer.inputName), $('<span>').text('Entrée ' + layer.sourceNumber + ' · Layer ' + layer.layerNumber + (parent ? ' — ' + parent.title : '')), $('<code>').text('ID de l’entrée : ' + layer.sourceKey));
         const audioInput = M.resolveSource(vMixInputs, layer.inputKey);
         if(audioInput && !blank) {
             const route = audioInput.audioSource || M.audioRoute(audioInput);

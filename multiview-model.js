@@ -353,11 +353,44 @@
         }
         return 'legacy-' + [a, b].map(n => (n >>> 0).toString(16).padStart(8, '0')).join('');
     }
-    function recallURL(href, config, index, {configPage = false, portable = true, inputs = []} = {}) {
+    const MAX_REQUEST_TARGET = 1800;
+    function urlParameters(href) {
+        const url = new URL(href);
+        const parameters = new URLSearchParams(url.search);
+        // A normal section anchor is not a configuration. Fragment values win
+        // when a portable link also carries a small routing query.
+        if(url.hash.includes('=')) for(const [name, value] of new URLSearchParams(url.hash.replace(/^#\??/, ''))) parameters.set(name, value);
+        return parameters;
+    }
+    function safeURL(href) {
+        const target = new URL(href);
+        if((target.pathname + target.search).length <= MAX_REQUEST_TARGET) return target.href;
+        const parameters = urlParameters(target.href);
+        const selected = Number(parameters.get('Screen'));
+        const screen = Number.isInteger(selected) && selected >= 1 && selected <= MAX_SCREENS ? selected : 1;
+        const language = parameters.get('Lang');
+        // The fragment is kept by browsers and vMix, but is never sent in the
+        // HTTP request. All fields remain self-contained, including old masks.
+        target.search = 'Screen=' + screen + (['fr', 'en', 'es'].includes(language) ? '&Lang=' + language : '');
+        target.hash = [...parameters].map(([name, value]) => encodeURIComponent(name) + '=' + encodeURIComponent(value)).join('&');
+        return target.href;
+    }
+    function recallURL(href, config, index, {configPage = false, portable = true, linked = false, inputs = [], language} = {}) {
         const s = config.screens[index];
         if(!s) throw new Error('Écran introuvable');
         const target = new URL(configPage ? 'config.html' : 'index.html', href);
         target.hash = '';
+        const connection = [['IP', config.host], ['Port', config.port], ['PC', config.pc], ['Screen', String(index + 1)]];
+        if(s.theme) connection.push(['Theme', s.theme]);
+        if(['en','es'].includes(language)) connection.push(['Lang', language]);
+        if(linked) {
+            // Only use this after saving to the PC bridge: BrowserNavigate is
+            // itself a GET command, so embedding a long fragment would still
+            // make the vMix API request too long. Portable backup links stay
+            // available separately in the configuration page.
+            target.search = connection.map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
+            return target.href;
+        }
         // Old viewers read contributor inputs directly rather than the root's groups.
         const refs = s.managed ? (s.managed.sources.length > 9 ? s.managed.parts.slice(0, Math.ceil(s.managed.sources.length / 10)) : [s.managed.root]) : s.inputs;
         const sourceList = refs.map(ref => {
@@ -389,15 +422,13 @@
                 else masks.push({key: id, value: {enabled: false}});
             }
         });
-        const parameters = [['Settings', JSON.stringify(s.extras)], ['MaskSettings', JSON.stringify(masks)],
-            ['IP', config.host], ['Port', config.port], ['PC', config.pc], ['Screen', String(index + 1)]];
-        if(s.theme) parameters.push(['Theme', s.theme]);
+        const parameters = [['Settings', JSON.stringify(s.extras)], ['MaskSettings', JSON.stringify(masks)], ...connection];
         if(portable) parameters.push(['Config', JSON.stringify(pack(config))]);
         // encodeURIComponent preserves JSON spaces for clients using the old decoder.
         target.search = 'Inputs=' + sourceList + '&' + parameters.map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
-        return target.href;
+        return safeURL(target.href);
     }
-    const api = {clone, screen, validate, templates, templateFrames, positions, resizeSpacing, spacingFor, DEFAULT_SPACING, LEGACY_SPACING, pack, unpack, legacyPC, recallURL, layerNumber, MAX_SCREENS, HTML_LAYER, themes, themeFor, tileDefaultsFor, changeTheme,
+    const api = {clone, screen, validate, templates, templateFrames, positions, resizeSpacing, spacingFor, DEFAULT_SPACING, LEGACY_SPACING, pack, unpack, legacyPC, recallURL, safeURL, urlParameters, MAX_REQUEST_TARGET, layerNumber, MAX_SCREENS, HTML_LAYER, themes, themeFor, tileDefaultsFor, changeTheme,
         parseSourceReference, resolveSource, isBrowser, isGeneratedMultiview, collectLayers, role, audioRoute, audioLevels, nextUpdate, isLoopbackURL, syncBases, PUBLIC_ORIGINS,
         compose, localPosition, migrateTileSettings, layerKey, activeLayersFor, videoLayersFor, layoutFor, configurableLayers};
     if (typeof module !== 'undefined') module.exports = api;

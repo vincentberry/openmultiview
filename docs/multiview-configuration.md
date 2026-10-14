@@ -1,5 +1,23 @@
 # Configuration du multiview
 
+## Langues et liens de rappel
+
+Le sélecteur **Français / English / Español** traduit l’interface et mémorise la
+langue dans ce navigateur. `Lang=en` et `Lang=es` permettent de la rappeler par
+URL. Les noms et IDs de vos sources, vos modèles et vos réglages sont conservés.
+
+Les anciens liens `?Inputs=...&Settings=...&MaskSettings=...` restent acceptés.
+Les nouveaux liens volumineux placent les paramètres après `#` pour éviter
+« URI Too Long » sur un hébergement public. Cette partie reste dans le
+navigateur et n’est pas envoyée au serveur HTTP. **Copiez le lien entier** : il
+contient toujours les écrans, leurs IDs et tous les réglages pour un rappel après
+redémarrage, sans dépendre d’une sauvegarde du serveur public.
+
+Lorsque le compagnon est connecté, la création et l’actualisation automatiques
+de la source HTML utilisent une URL courte liée au PC et au numéro d’écran.
+La configuration est enregistrée localement avant la navigation de vMix. Les
+liens complets de sauvegarde restent disponibles dans **Sauvegarde & URL**.
+
 ## Thème de chaque écran
 
 Dans **Disposition → Le style de cet écran**, choisissez **Classique** pour

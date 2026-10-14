@@ -245,6 +245,12 @@ summary { color: #a8e8d0; cursor: pointer; padding: 6px 0; }
 .app-brand-mark { display: block; width: 36px; height: 36px; overflow: hidden; border-radius: 6px; }
 .app-brand-mark img { display: block; width: 60px; height: 60px; max-width: none; margin: -12px; }
 .studio-header-tools { display: grid; justify-items: end; gap: 12px; }
+.studio-header-tools { grid-template-columns: auto auto; align-items: center; }
+.studio-header-tools .guide-link { grid-column: 1; grid-row: 1; }
+.studio-header-tools .local-badge { grid-column: 1/-1; grid-row: 2; }
+.studio-header-tools .language-control { grid-column: 2; grid-row: 1; }
+.language-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.language-control select { min-height: 36px; padding: 7px 26px 7px 10px; font-size: 13px; }
 .guide-link { font-size: 13px; color: var(--muted); text-decoration: none; }
 .guide-link:hover { color: var(--mint); }
 a:not(.app-brand):not(.button-link) { color: var(--mint); text-underline-offset: 4px; }

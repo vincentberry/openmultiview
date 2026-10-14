@@ -47,6 +47,13 @@ dans `test.yml`.
 
 ## Référencement préparé
 
+L’accueil, le guide et la confidentialité sont disponibles en français,
+anglais et espagnol à des adresses distinctes (`en.html`, `es.html`,
+`guide.en.html`, etc.). Le HTML est traduit à la construction, avec une
+adresse canonique par langue et des liens `hreflang` réciproques, incluant
+`x-default`. Le sitemap contient les neuf pages.
+Voir [les recommandations de Google sur les versions localisées](https://developers.google.com/search/docs/specialty/international/localized-versions).
+
 L’accueil, le guide et la page de confidentialité disposent de titres,
 descriptions et adresses canoniques. L’accueil fournit les données structurées
 `WebSite` et `SoftwareApplication`, sans avis ou notes inventés. Une image

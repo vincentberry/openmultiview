@@ -1,8 +1,9 @@
 /* The public preview is illustrative: it never contacts vMix or the PC bridge. */
 (function() {
     const query = new URLSearchParams(location.search);
+    const fragment = new URLSearchParams((location.hash || '').replace(/^#\??/, ''));
     const appParameters = ['input', 'inputs', 'input2', 'settings', 'masksettings', 'pc', 'screen', 'config', 'ip', 'port'];
-    if([...query.keys()].some(key => appParameters.includes(key.toLowerCase()))) {
+    if([...query.keys(), ...fragment.keys()].some(key => appParameters.includes(key.toLowerCase()))) {
         // Static hosts cannot route query parameters; keep legacy index links usable.
         location.replace(new URL('viewer.html' + location.search + location.hash, location.href).href);
         return;

@@ -46,7 +46,7 @@ function viewer(href, {stored = {}, remote = null, studio = false} = {}) {
     // The viewer's bridge is exercised without the unrelated API polling timer.
     scope.fetchWithTimeout = async url => {calls.push(url); return {ok: true, json: async () => remote};};
     if(studio) vm.runInContext(fs.readFileSync(path.join(__dirname, '../studio.js'), 'utf8'), scope);
-    return {scope, calls, warnings, storage, recalled: () => M.unpack(JSON.parse(new URL(attributes.get('#configureLink:href')).searchParams.get('Config')))};
+    return {scope, calls, warnings, storage, recalled: () => M.unpack(JSON.parse(M.urlParameters(attributes.get('#configureLink:href')).get('Config')))};
 }
 
 test('the supplied old URL restores both input IDs, its three extras and disabled layer 9', () => {
@@ -248,4 +248,68 @@ test('a viewer receives a theme from the PC bridge independently of its browser 
     assert.equal(view.scope.vMixSettings.theme, 'openmultiview');
     assert.equal(view.scope.getDefaultTileSettings().borderColor, '#536b74');
     assert.equal(view.recalled().updated, 2);
+});
+
+function largeConfiguration() {
+    return {version: 1, pc: 'large-demo', host: '127.0.0.1', port: '8767', updated: 5,
+        screens: [0, 1].map(index => ({...M.screen(['root-' + index]), theme: 'openmultiview', extras: oldExtras,
+            tiles: Array.from({length: 32}, (_, i) => ({key: 'source-group-' + index + '-layer-' + i,
+                value: {...M.tileDefaultsFor('openmultiview'), titlePosition: 'below', titleBackground: false,
+                    titleFontSize: 29, timer: true, borderWidth: 5, vuPosition: 'outside-left'}}))}))};
+}
+
+test('large portable and linked-fallback URLs keep the HTTP request short and restore both screens after restart', () => {
+    const config = largeConfiguration();
+    for(const portable of [true, false]) for(const configPage of [true, false]) {
+        const href = M.recallURL('https://example.com/community/', config, 1, {portable, configPage, language: 'es'});
+        const url = new URL(href), parameters = M.urlParameters(href);
+        assert.ok((url.pathname + url.search).length < M.MAX_REQUEST_TARGET);
+        assert.ok(url.hash.length > 10000);
+        assert.equal(url.searchParams.get('Lang'), 'es');
+        assert.equal(parameters.get('Inputs'), 'key:root-1');
+        assert.deepEqual(JSON.parse(parameters.get('MaskSettings')), config.screens[1].tiles);
+        assert.deepEqual(JSON.parse(parameters.get('Settings')), oldExtras);
+        assert.equal(parameters.get('Screen'), '2');
+        if(portable) {
+            assert.deepEqual(M.pack(M.unpack(JSON.parse(parameters.get('Config')))), M.pack(config));
+            const freshBrowser = viewer(href, {studio: true});
+            assert.deepEqual(M.pack(freshBrowser.recalled()), M.pack(config));
+            assert.equal(freshBrowser.scope.vMixSettings.theme, 'openmultiview');
+            assert.equal(freshBrowser.scope.vMixSettings.port, config.port);
+        } else {
+            assert.equal(parameters.has('Config'), false);
+            const legacyFallback = viewer(href);
+            assert.deepEqual(M.clone(legacyFallback.scope.mySettingMask), config.screens[1].tiles);
+        }
+    }
+});
+
+test('an oversized existing legacy URL can be repaired without losing IDs, masks, spaces or plus signs', () => {
+    const masks = Array.from({length: 40}, (_, i) => ({key: 'source-demo-layer-' + i, value: {...oldMasks[0].value, mask: 'Nom privé & + été ' + i}}));
+    const original = oldURL.replace(/MaskSettings=[^&]*/, 'MaskSettings=' + encodeURIComponent(JSON.stringify(masks)));
+    const repaired = M.safeURL(original);
+    assert.ok(new URL(repaired).hash.length > 10000);
+    for(const [key, value] of M.urlParameters(original)) assert.equal(M.urlParameters(repaired).get(key), value);
+    assert.deepEqual(M.clone(viewer(repaired).scope.mySettingMask), masks);
+    const imported = viewer(repaired, {studio: true});
+    for(const mask of masks) for(const [key, value] of Object.entries(mask.value)) assert.equal(imported.scope.getTileSettings(mask.key)[key], value);
+    assert.deepEqual(imported.recalled().screens[0].inputs, [first, second]);
+    assert.equal(M.safeURL(oldURL), oldURL);
+    assert.equal(M.urlParameters('http://localhost/?PC=query#PC=fragment').get('PC'), 'fragment');
+    assert.equal(M.urlParameters('http://localhost/?PC=query#Screen').get('PC'), 'query');
+});
+
+test('browser navigation uses a short PC reference after bridge save and resolves screen 2 in a fresh browser profile', async () => {
+    const config = largeConfiguration();
+    const href = M.recallURL('http://localhost/', config, 1, {linked: true, language: 'en'});
+    const url = new URL(href);
+    assert.ok(href.length < 200);
+    assert.equal(url.hash, '');
+    assert.equal(url.searchParams.get('PC'), config.pc);
+    assert.equal(url.searchParams.get('Screen'), '2');
+    assert.equal(url.searchParams.has('MaskSettings'), false);
+    const view = viewer(href, {remote: config, studio: true});
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(M.pack(view.recalled()), M.pack(config));
+    assert.deepEqual(M.clone(view.scope.vMixSettings.multiViewInputs), ['root-1']);
 });

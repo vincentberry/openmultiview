@@ -4,7 +4,7 @@
 tally, audio et URL de rappel, gratuitement et sans compte.
 
 [Site public](https://vincentberry.github.io/openmultiview/) ·
-[Guide de démarrage](https://vincentberry.github.io/openmultiview/guide.html) ·
+[Guide de démarrage](https://vincentberry.github.io/openmultiview/guide.html) · [Español](README.es.md) ·
 [English](README.md) · [Licence MIT](LICENSE)
 
 ![OpenMultiview](assets/social-card.jpg)
@@ -42,9 +42,11 @@ navigateur le demande. Les pages locales restent disponibles en cas de blocage
 depuis HTTPS.
 
 Les anciens liens `Inputs`, `Settings` et `MaskSettings` restent acceptés. Une
-URL complète transporte sa configuration et peut être visible dans les journaux
-de l’hébergeur : partagez-la avec cette information en tête. L’accueil public
-présente une simulation, pas un retour vidéo réel.
+URL complète transporte sa configuration. Les gros réglages sont placés après
+`#` pour éviter « URI Too Long » ; cette partie n’est pas envoyée au serveur.
+Conservez le lien entier pour retrouver tous les écrans après redémarrage.
+Les paramètres avant `#` peuvent figurer dans les journaux de l’hébergeur.
+L’accueil public présente une simulation, pas un retour vidéo réel.
 
 ## Documentation et contributions
 
@@ -52,6 +54,11 @@ Dans **Disposition → Le style de cet écran**, choisissez le thème classique 
 le thème OpenMultiview de l’accueil : bandeaux bleu nuit, preview menthe et
 programme corail. Chaque écran conserve son thème dans les modèles et les URL.
 Les anciens liens gardent leur rendu classique.
+
+Le sélecteur de l’en-tête propose **Français, English et Español** sur le
+site et dans la configuration. Le choix est mémorisé dans ce navigateur et
+les URL peuvent rappeler la langue via `Lang=en` ou `Lang=es`. Les noms des
+sources et leurs IDs vMix sont conservés.
 
 - [Guide complet de configuration](docs/multiview-configuration.md)
 - [Hébergement public et référencement](docs/publication.md)
