@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /control-api
+Disallow: /presence-api
+
+Sitemap: https://vincentberry.github.io/openmultiview/sitemap.xml

@@ -1,0 +1,25 @@
+name: multiview-vmix
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: multiview-vmix-web:latest
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks:
+      web:
+        aliases:
+          - multiview-vmix
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  web:
+    external: true

@@ -1,0 +1,979 @@
+body {
+    margin: 0;
+    height: 100%;
+    width: 100%;
+    /* background-color: black; */
+}
+
+html {
+    height: 100%;
+    width: 100%;
+}
+
+.multiViewBox {
+    position: absolute;
+    container-type: size;
+    border-style: solid;
+    box-sizing: content-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 50px;
+    font-family: sans-serif;
+    transform: translate(-50%,-50%);
+    border-width: var(--layer-border-width, 3px);
+    border-color: var(--layer-border-color, rgba(180,180,180,1));
+    pointer-events: all;
+    transition: none;
+    /* outline: rgba(180,180,180,1); */
+    /* outline-width: 5px; */
+    /* outline-style: solid; */
+}
+
+.outerContainer {
+    height: 100%;
+    width: 100%;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+* {
+    overflow: hidden;
+    font-family: sans-serif;
+    transition-duration: 0.3s;
+}
+
+.inputTitle {
+    font-size: 22px;
+    background-color: rgba(33, 33, 33, 0.8);
+    color: white;
+    /* text-shadow: 1px 1px 0px black; */
+    padding: 4px 8px;
+    border-radius: 5px;
+    /* border-style: solid; */
+    position: absolute;
+    bottom: 25px;
+    /* margin: 0 15%; */
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 75%;
+    pointer-events: all;
+    border-width: 1px;
+}
+
+/* Player-style overlays. All dimensions belong to the video tile, so the
+   same layout stays readable in the large PGM view and the smaller sources. */
+.layerBox {
+    --tile-inset: clamp(3px, 2cqh, 12px);
+    --tile-gap: clamp(2px, 1cqh, 6px);
+    --tile-title-size: min(var(--title-font-size, 22px), clamp(8px, 6cqw, 50px));
+    --tile-title-padding: clamp(2px, 1cqh, 6px);
+    --tile-title-band: calc(var(--tile-title-size) * 1.15 + var(--tile-title-padding) * 2 + 2px);
+    --tile-timer-size: clamp(8px, 2.8cqw, 48px);
+    --tile-media-title-size: max(8px, calc(var(--tile-timer-size) * .85));
+    --tile-time-label-size: max(8px, calc(var(--tile-timer-size) * .55));
+    --tile-timer-band: calc(var(--tile-timer-size) * 1.15 + var(--tile-title-padding) * 2 + 2px);
+    --meter-width: clamp(40px, 14cqw, 84px);
+    --meter-gap: clamp(1px, .5cqw, 4px);
+    --meter-scale-width: clamp(16px, 4cqw, 24px);
+    overflow: visible;
+}
+
+.layerBox .inputTitle,
+.layerBox .layerTimer,
+.layerBox .leftAlignContainer {
+    box-sizing: border-box;
+    border: 1px solid #181818;
+    border-radius: 0;
+    background-color: #101010b3;
+    color: #fff;
+    text-shadow: none;
+}
+
+.layerBox .inputTitle {
+    left: 50%;
+    bottom: var(--tile-inset);
+    transform: translateX(-50%);
+    max-width: calc(100% - var(--tile-inset) * 2);
+    padding: var(--tile-title-padding) clamp(4px, 2cqw, 12px);
+    overflow: hidden;
+    font-family: Consolas, "Liberation Mono", monospace;
+    font-size: var(--tile-title-size);
+    font-weight: 700;
+    line-height: 1.15;
+    text-align: center;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    transition: color .15s, background-color .15s;
+}
+
+.layerBox.title-overlay-top .inputTitle {
+    top: var(--tile-inset);
+    bottom: auto;
+}
+
+.layerBox.title-below .inputTitle {
+    top: calc(100% + var(--tile-gap));
+    bottom: auto;
+}
+
+.layerBox.title-above .inputTitle {
+    top: auto;
+    bottom: calc(100% + var(--tile-gap));
+}
+
+.multiViewBox.program {border-color: var(--layer-program-color, red) !important;}
+
+.multiViewBox.preview {border-color: var(--layer-preview-color, #0de416);}
+
+.multiViewBox.tallyOff {
+    border-color: var(--layer-border-color, rgba(180,180,180,1)) !important;
+}
+
+.multiViewBox.tallyOff .inputTitle {
+    background-color: rgba(33, 33, 33, 0.8) !important;
+}
+
+.multiViewBox.viewOff {
+    display: none;
+}
+
+.multiViewBox.vuOff .leftAlignContainer {
+    display: none;
+}
+
+.multiViewBox.selected {
+    outline: 3px solid #ffffff;
+    outline-offset: 3px;
+    z-index: 30;
+}
+
+.layerBox {
+    z-index: 20;
+}
+
+.multiViewBox.configIgnored {
+    cursor: default;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.layerTimer {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 4px 8px;
+    border-radius: 5px;
+    background-color: rgba(33, 33, 33, 0.8);
+    color: white;
+    font-size: 22px;
+    font-family: monospace;
+    font-weight: bold;
+    line-height: 1.1;
+    text-shadow: 1px 1px 2px black;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.layerTimer.timerMediaPlayer {
+    top: auto;
+    bottom: max(4px, 2cqh);
+    left: auto;
+    right: max(4px, 2cqw);
+    max-width: calc(100% - 24px);
+    padding: max(2px, 0.3cqh) max(4px, 0.5cqw);
+    transform: none;
+    border: 1px solid #181818;
+    border-radius: 0;
+    background-color: #101010b3;
+    font-size: clamp(10px, min(4.5cqw, 12cqh), 45px);
+    font-weight: bold;
+    line-height: 1.1;
+    text-align: right;
+    text-shadow: none;
+    transition: color 0.3s ease;
+}
+
+.layerTimer.timerWarning {
+    color: orange;
+}
+
+.layerTimer.timerDanger {
+    color: red;
+}
+
+.layerTimer.timerOutputMix {
+    left: 12px;
+    right: auto;
+    transform: none;
+}
+
+.layerBox .layerTimer,
+.layerBox .layerTimer.timerMediaPlayer,
+.layerBox .layerTimer.timerOutputMix {
+    display: inline-flex;
+    align-items: center;
+    gap: .4em;
+    top: auto;
+    bottom: var(--tile-inset);
+    left: auto;
+    right: var(--tile-inset);
+    max-width: calc(100% - var(--tile-inset) * 2);
+    padding: var(--tile-title-padding) clamp(4px, 1.5cqw, 12px);
+    transform: none;
+    overflow: hidden;
+    font-family: Consolas, "Liberation Mono", monospace;
+    font-size: var(--tile-timer-size);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+    text-align: right;
+    text-shadow: none;
+    transition: color .15s;
+}
+
+.layerBox.title-overlay-bottom:not(.NameMask) .layerTimer {
+    bottom: calc(var(--tile-inset) + var(--tile-title-band) + var(--tile-gap));
+}
+
+.layerBox .layerTimer.timerWarning { color: orange; }
+.layerBox .layerTimer.timerDanger { color: red; }
+
+.layerBox .layerLoop {
+    display: block;
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
+    object-fit: contain;
+    transition: none;
+}
+.layerBox .layerLoop[hidden] { display: none; }
+.layerBox .layerTimerValue { font-family: inherit; }
+
+.layerBox .layerTimerTimes,
+.layerBox .layerRemainingValue {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .4em;
+}
+
+.layerBox .layerTimeLabel { display: none; }
+.layerBox .layerMediaTitle[hidden],
+.layerBox .layerElapsed[hidden] { display: none; }
+
+.layerBox.hasListPlayer {
+    --tile-timer-band: calc(var(--tile-media-title-size) * 1.15 + var(--tile-time-label-size) * 1.1 + var(--tile-timer-size) * 1.45 + var(--tile-title-padding) * 2 + 2px);
+}
+
+.layerBox .layerTimer.timerVideoList {
+    flex-direction: column;
+    align-items: stretch;
+    gap: .3em;
+}
+
+.layerBox .layerMediaTitle {
+    max-width: 26ch;
+    overflow: hidden;
+    font-size: var(--tile-media-title-size);
+    text-overflow: ellipsis;
+    text-align: left;
+    color: #fff;
+}
+
+.layerBox .timerVideoList .layerTimerTimes { gap: .8em; }
+.layerBox .layerElapsed { color: #d4d4d4; }
+.layerBox .timerVideoList .layerTimeLabel {
+    display: block;
+    font-size: var(--tile-time-label-size);
+    line-height: 1.1;
+    text-transform: uppercase;
+    color: #d4d4d4;
+}
+
+.layerContextMenu {
+    position: fixed;
+    display: none;
+    min-width: 180px;
+    z-index: 300;
+    padding: 8px;
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 6px;
+    background-color: rgba(18,18,18,0.96);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    color: white;
+    font-size: 14px;
+    text-shadow: none;
+}
+
+.layerContextMenu.isOpen {
+    display: block;
+}
+
+.layerContextTitle {
+    font-weight: bold;
+    margin-bottom: 2px;
+}
+
+.layerContextSubtitle {
+    max-width: 220px;
+    margin-bottom: 8px;
+    color: rgba(255,255,255,0.7);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.layerContextItem {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 4px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.layerContextItem:hover {
+    background-color: rgba(255,255,255,0.12);
+}
+
+.layerContextDivider {
+    height: 1px;
+    margin: 6px 0;
+    background-color: rgba(255,255,255,0.16);
+}
+
+.layerContextControl {
+    justify-content: space-between;
+}
+
+.layerContextControl input[type="number"] {
+    width: 64px;
+}
+
+.layerContextControl input[type="color"] {
+    width: 42px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    background: transparent;
+}
+
+.multiViewBox.program .inputTitle{background-color: var(--layer-program-color, rgba(255, 0, 0, 0.8)) !important;}
+
+.multiViewBox.preview .inputTitle{background-color: var(--layer-preview-color, rgba(13, 228, 22, 0.8)) !important;}
+
+.layerBox.title-transparent .inputTitle {
+    border-color: transparent;
+    background: transparent !important;
+    text-shadow: 0 1px 3px #000, 0 0 2px #000;
+}
+
+.layerBox.title-transparent.preview .inputTitle { color: var(--layer-preview-color, #0de416); }
+.layerBox.title-transparent.program .inputTitle { color: var(--layer-program-color, #ff0000); }
+
+div#clock {
+    font-size: 68px;
+    color: white;
+    text-shadow: 1px 1px 2px black;
+}
+
+.audioMeter {
+    width: 25%;
+    padding: 10px 0px 10px 5px;
+    display: flex;
+    align-items: flex-end;
+    overflow: visible;
+}
+
+.audioMeterContainer {
+    height: 95%;
+    width: 100%;
+    position: relative;
+    display: flex;
+    pointer-events: none;
+}
+
+.actualMeter {
+    height: 90%;
+    width: 22%;
+    /* transition: all 0.05s ease; */
+    background: linear-gradient(0deg, #4CAF50 0%, #4CAF50  53.2%, #FFEB3B 36%, #FFEB3B 85%, #F44336 59%, rgb(221 81 81 / 1) 100%);
+    background-position: center top;
+    background-repeat: no-repeat;
+    background-size: contain;
+    -webkit-mask: url(./mask.png);
+    -webkit-mask-size: cover;
+    -webkit-mask-repeat: no-repeat;
+    /* clip-path: inset(0% 0% 0% 0%) !important; */
+    -webkit-mask-position: bottom;
+    position: absolute;
+    opacity: 0.7;
+}
+
+.leftAlignContainer {
+    height: 74%;
+    background-color: rgba(0,0,0,0.3);
+    border-radius: 5px;
+    position: absolute;
+    left: 4px;
+    width: 7%;
+    bottom: 8px;
+}
+
+.VUlabel {
+    font-size: 1.4rem;
+    color: gainsboro;
+    height: 10%;
+    display: flex;
+    /* justify-content: center; */
+    align-items: center;
+    transform-origin: right;
+    overflow: visible;
+}
+
+.VUlabels {
+    overflow: visible;
+    position: absolute;
+    right: 1px;
+    display: flex;
+    justify-content: flex-end;
+    height: 100%;
+    flex-direction: column;
+    padding: 10px 0px 10px 5px;
+}
+
+.LRlabel {
+    font-size: 2rem;
+    color: gainsboro;
+    transform-origin: top;
+    overflow: visible;
+    display: inline;
+    width: 53%;
+}
+
+.LRlabels {
+    display: flex;
+    justify-content: space-evenly;
+    width: 69%;
+    padding-left: 6%;
+}
+
+.testdiv {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-end;
+}
+
+.meterOutline {
+    height: 90%;
+    width: 22%;
+    /* transition: all 0.05s ease; */
+    background: url(./mask.png);
+    background-position: center top;
+    background-repeat: no-repeat;
+    background-size: cover;
+    -webkit-mask: url(./mask.png);
+    -webkit-mask-size: cover;
+    -webkit-mask-repeat: no-repeat;
+    clip-path: inset(0% 0% 0% 0%) !important;
+    -webkit-mask-position: bottom;
+    position: absolute;
+    opacity: 0.2;
+}
+
+.layerBox .leftAlignContainer {
+    position: absolute;
+    left: var(--tile-inset);
+    right: auto;
+    bottom: var(--tile-inset);
+    width: var(--meter-width);
+    height: 55%;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: clamp(4px, 1cqw, 7px);
+    padding: clamp(4px, 1cqw, 7px) var(--meter-gap) var(--meter-gap);
+    pointer-events: none;
+    transition: none;
+}
+
+.layerBox.title-overlay-bottom:not(.NameMask) .leftAlignContainer {
+    bottom: calc(var(--tile-inset) + var(--tile-title-band) + var(--tile-gap));
+}
+
+.layerBox .audioMeterContainer {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: var(--meter-scale-width) repeat(2, minmax(0, 1fr));
+    gap: var(--meter-gap);
+    overflow: visible;
+}
+
+.layerBox .audioMeter {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.layerBox .actualMeter,
+.layerBox .meterOutline {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to top, #4caf50 0%, #4caf50 70%, #ffeb3b 70%, #ffeb3b 90%, #f44336 90%, #f44336 100%);
+    -webkit-mask: url(./mask.png) center / 100% 100% no-repeat;
+    mask: url(./mask.png) center / 100% 100% no-repeat;
+    transition: none;
+}
+
+.layerBox .actualMeter { opacity: 1; clip-path: inset(100% 0 0); }
+.layerBox .meterOutline { opacity: .18; }
+
+.layerBox .VUlabels {
+    position: relative;
+    inset: auto;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    overflow: visible;
+}
+
+.layerBox .VUlabel {
+    position: absolute;
+    right: 0;
+    display: block;
+    height: auto;
+    color: #e0e0e0;
+    font-family: Consolas, "Liberation Mono", monospace;
+    font-size: clamp(8px, 2cqw, 12px);
+    font-weight: 400;
+    line-height: 1;
+    transform: translateY(-50%);
+    white-space: nowrap;
+}
+
+.layerBox .LRlabels {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--meter-gap);
+    width: auto;
+    padding: 0;
+    margin-left: calc(var(--meter-scale-width) + var(--meter-gap));
+    overflow: visible;
+}
+
+.layerBox .LRlabel {
+    width: auto;
+    color: #e0e0e0;
+    font-family: Consolas, "Liberation Mono", monospace;
+    font-size: clamp(8px, 2.4cqw, 14px);
+    line-height: 1.1;
+    text-align: center;
+}
+
+.layerBox.vu-inside-right .leftAlignContainer { left: auto; right: var(--tile-inset); }
+.layerBox.vu-inside-right.hasLayerTimer .leftAlignContainer { bottom: calc(var(--tile-inset) + var(--tile-timer-band) + var(--tile-gap)); }
+.layerBox.vu-inside-right.hasLayerTimer.title-overlay-bottom:not(.NameMask) .leftAlignContainer { bottom: calc(var(--tile-inset) + var(--tile-title-band) + var(--tile-timer-band) + var(--tile-gap) * 2); }
+.layerBox.vu-outside-left .leftAlignContainer { left: auto; right: calc(100% + var(--tile-gap)); bottom: 0; height: 100%; }
+.layerBox.vu-outside-right .leftAlignContainer { left: calc(100% + var(--tile-gap)); right: auto; bottom: 0; height: 100%; }
+.layerBox.vuOff .leftAlignContainer { display: none; }
+
+@container (max-height: 180px) {
+    .layerBox .VUlabel[data-db="-6"],
+    .layerBox .VUlabel[data-db="-18"],
+    .layerBox .VUlabel[data-db="-30"],
+    .layerBox .VUlabel[data-db="-50"] { display: none; }
+}
+
+@container (max-height: 100px) {
+    .layerBox .VUlabel:not([data-db="0"]):not([data-db="-30"]):not([data-db="-60"]) { display: none; }
+    .layerBox .VUlabel[data-db="-30"] { display: block; }
+}
+
+.warning {
+    position: absolute;
+    background-color: rgba(0,0,0,0.5);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    color: white;
+    font-size: xxx-large;
+    font-family: sans-serif;
+    font-weight: bold;
+    text-shadow: 2px 2px 1px black;
+}
+
+.settings {
+    position: relative;
+    width: 100%;
+    max-height: min(620px, calc(78vh - 92px));
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 10px;
+    z-index: 20;
+    padding: 0 12px 12px;
+    box-sizing: border-box;
+    overflow: auto;
+}
+
+.settingGroup {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(82px, 0.55fr) minmax(120px, 1fr) minmax(160px, 1.2fr);
+    gap: 8px;
+    align-items: center;
+    color: white;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px black;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 6px;
+    padding: 10px;
+    background-color: rgba(0,0,0,0.25);
+    box-sizing: border-box;
+    overflow: visible;
+}
+
+.settingsHeader {
+    font-size: x-large;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+.generalSettings {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 0;
+    overflow: visible;
+}
+
+.positionSettings {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: visible;
+}
+
+.positionGroup {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-width: 0;
+    overflow: visible;
+}
+
+.PPZLabel {
+    flex: 0.7;
+}
+
+.PPZSlider {
+    flex: 2;
+    min-width: 70px;
+}
+
+.PPZInput {
+    flex: 0.6;
+    min-width: 52px;
+    max-width: 72px;
+}
+
+.positionGroup>* {
+    margin: 5px;
+}
+
+.sourceSettings {
+    min-width: 270px;
+    gap: 8px;
+}
+
+.sourceInputRow {
+    display: grid;
+    grid-template-columns: 70px minmax(170px, 1fr) 30px;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.sourceInputRow select {
+    min-width: 0;
+    width: 100%;
+    padding: 4px 6px;
+    border: 1px solid rgba(255,255,255,0.35);
+    background-color: rgba(0,0,0,0.42);
+    color: white;
+    font-weight: bold;
+}
+
+.settingsButton,
+.removeSourceInput {
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.45);
+    background: rgba(0,0,0,0.35);
+    color: white;
+    font-weight: bold;
+    padding: 5px 8px;
+}
+
+.removeSourceInput:disabled {
+    cursor: default;
+    opacity: 0.35;
+}
+
+.tileSettings {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 110px;
+}
+
+.tileSettingsTitle {
+    color: #ffffff;
+}
+
+.tileLayerSelect {
+    width: 100%;
+    max-width: 220px;
+    min-width: 150px;
+    padding: 5px 6px;
+    border: 1px solid rgba(255,255,255,0.35);
+    background-color: rgba(0,0,0,0.42);
+    color: white;
+    font-weight: bold;
+}
+
+.tileLayerSelect:disabled {
+    opacity: 0.5;
+}
+
+.tileSettings label {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.tileSettings.empty label {
+    display: none;
+}
+
+br {
+    /* display: none; */
+}
+
+.settingGroup>* {}
+
+.vMixStatusEnabled::after {content: "YES" !important;}
+
+.vMixStatuses {
+    display: flex;
+    flex-direction: row;
+    /* font-size: 28px; */
+    height: 100%;
+    width: 100%;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0 3%;
+}
+
+.column {
+    height: 100%;
+    display: flex;
+    /* align-items: center; */
+    flex-direction: column;
+    justify-content: space-evenly;
+    flex: 1;
+}
+
+.vMixStatus {
+    color: white;
+    text-shadow: 2px 2px 2px black;
+    font-weight: bold;
+}
+
+.vMixStatus::after {content: "NO";}
+
+.vMixStatusEnabled {
+    color: red !important;
+}
+
+.settingGroup:last-child {
+    border: 1px solid rgba(255,255,255,0.18);
+}
+
+div#countdown {
+    font-size: 68px;
+    color: white;
+    text-shadow: 1px 1px 2px black;
+}
+
+.hideContainer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: min(78vh, 720px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background-color: rgba(12,12,12,0.92);
+    border-top: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.42);
+    opacity: 1;
+    overflow: visible;
+    z-index: 100;
+    transform: translateY(calc(100% - 38px));
+    transition: transform 0.2s ease;
+}
+
+.hideContainer:hover,
+.hideContainer:focus-within,
+.hideContainer.isOpen {
+    transform: translateY(0);
+}
+
+.hideContainer.handleHidden:not(:hover):not(:focus-within):not(.isOpen) {
+    transform: translateY(100%);
+}
+
+.settingsHandle {
+    align-self: center;
+    height: 38px;
+    min-width: 180px;
+    border: 1px solid rgba(255,255,255,0.32);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    background-color: rgba(12,12,12,0.96);
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.settingsURL {
+    display: flex;
+    width: 100%;
+    padding: 0 12px;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    gap: 10px;
+}
+
+input#saveURL {
+    width: min(960px, 80%);
+    min-width: 160px;
+    font-size: large;
+}
+
+.settingsTooltip {
+    color: white;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px black;
+    white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+    .settings {
+        grid-template-columns: 1fr;
+    }
+
+    .settingGroup {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .settingsURL {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    input#saveURL {
+        width: 100%;
+    }
+}
+
+.multiViewBoxMask{
+    border-width: 0px;
+
+}
+
+/* .multiViewBoxMask .inputTitle{
+    border-width: 3px;
+    border-color: rgba(255, 0, 0, 0);
+} */
+
+/* .multiViewBoxMask.program .inputTitle{
+    border-width: 3px;
+    border-color: rgba(255, 0, 0, 0.8);
+}
+.multiViewBoxMask.preview .inputTitle{
+    border-width: 3px;
+    border-color: rgba(13, 228, 22, 0.8);
+} */
+
+.NameMask .inputTitle{
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* The illustrated home-page theme only paints the overlay. Video stays
+   transparent and the existing per-layer positioning controls still apply. */
+.layerRoleBadge { display: none; }
+.outerContainer[data-theme="openmultiview"] .layerBox .inputTitle {
+    left: 0;
+    width: 100%;
+    max-width: 100%;
+    transform: none;
+    border: 0;
+    border-top: 1px solid #2c3a42;
+    background: #0c151de6;
+    color: #f2f1e9;
+    letter-spacing: .035em;
+}
+.outerContainer[data-theme="openmultiview"] .title-overlay-bottom .inputTitle { bottom: 0; }
+.outerContainer[data-theme="openmultiview"] .title-overlay-top .inputTitle { top: 0; }
+.outerContainer[data-theme="openmultiview"] .preview .inputTitle,
+.outerContainer[data-theme="openmultiview"] .program .inputTitle,
+.outerContainer[data-theme="openmultiview"] .tallyOff .inputTitle { background-color: #0c151de6 !important; }
+.outerContainer[data-theme="openmultiview"] .preview .inputTitle { color: var(--layer-preview-color); }
+.outerContainer[data-theme="openmultiview"] .program .inputTitle { color: var(--layer-program-color); }
+.outerContainer[data-theme="openmultiview"] .title-transparent .inputTitle { background: transparent !important; border-color: transparent; }
+.outerContainer[data-theme="openmultiview"] .layerBox .layerRoleBadge {
+    display: block;
+    position: absolute;
+    top: var(--tile-inset);
+    left: var(--tile-inset);
+    padding: .3em .65em;
+    background: #0c151dd9;
+    color: #f2f1e9;
+    font: 700 max(8px, min(14px, 3cqw))/1.2 Consolas, monospace;
+    letter-spacing: .08em;
+    pointer-events: none;
+}
+.outerContainer[data-theme="openmultiview"] .title-overlay-top .layerRoleBadge { top: calc(var(--tile-inset) + var(--tile-title-band)); }
+.outerContainer[data-theme="openmultiview"] .NameMask .layerRoleBadge { display: none; }
+.outerContainer[data-theme="openmultiview"] .layerBox .layerTimer,
+.outerContainer[data-theme="openmultiview"] .layerBox .leftAlignContainer { background-color: #0c151dd9; border-color: #2c3a42; }
+.outerContainer[data-theme="openmultiview"] .layerBox .layerTimer.timerWarning { color: #ffd394; }
+.outerContainer[data-theme="openmultiview"] .layerBox .layerTimer.timerDanger { color: #ff7164; }
+.outerContainer[data-theme="openmultiview"] .layerBox .actualMeter,
+.outerContainer[data-theme="openmultiview"] .layerBox .meterOutline {
+    background: linear-gradient(to top, #66e5b5 0%, #66e5b5 70%, #ffd394 70%, #ffd394 90%, #ff7164 90%, #ff7164 100%);
+}

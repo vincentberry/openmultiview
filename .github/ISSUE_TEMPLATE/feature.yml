@@ -1,0 +1,16 @@
+name: Feature / idée
+description: Suggest a production workflow improvement.
+title: "[Idea] "
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Production need / besoin de régie
+      description: Describe the workflow and the expected result.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal / proposition
+      description: Explain the change; include a layout sketch if useful.

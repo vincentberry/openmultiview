@@ -1,0 +1,26 @@
+name: Bug / problème
+description: Report a problem with the multiview or companion.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: "Please remove private production URLs, source names and credentials. French and English reports are welcome."
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: vMix, browser and Node.js versions; local or public site.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce / reproduction
+      description: What did you do, what happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or logs / captures et logs
+      description: Use test sources and remove private information.

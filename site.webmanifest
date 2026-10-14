@@ -1,0 +1,11 @@
+{
+  "name": "OpenMultiview — multiview pour vMix",
+  "short_name": "OpenMultiview",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "browser",
+  "background_color": "#101b25",
+  "theme_color": "#101b25",
+  "icons": [{"src": "assets/openmultiview-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any"}]
+}

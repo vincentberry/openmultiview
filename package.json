@@ -1,0 +1,16 @@
+{
+  "name": "openmultiview",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Open-source multiview layouts, tally and monitoring for vMix.",
+  "license": "MIT",
+  "author": "OpenMultiview contributors",
+  "engines": {"node": ">=22"},
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js",
+    "audit:public": "node scripts/audit-public.cjs",
+    "build": "node scripts/build-public.cjs"
+  },
+  "repository": {"type": "git", "url": "https://github.com/vincentberry/openmultiview.git"}
+}

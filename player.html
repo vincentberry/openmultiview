@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenMultiview · Player vMix</title>
+    <meta name="robots" content="noindex, follow">
+    <meta name="referrer" content="no-referrer">
+    <link rel="stylesheet" href="style_player.css">
+    <link rel="shortcut icon" href="./favicon.ico">
+</head>
+<body>
+    <div id="warning" class="warning">vMix not running on this computer</div>
+    <div id="outerContainer_player" class="outerContainer_player">
+        <div class="player" id="output_player">MIX</div>
+        <div  class="player" id="time_player">TIME</div>
+        <div  class="player" id="countdown_player">COUNTDOWN</div>
+        <img  class="player" src="./loop.png" id="loop_player"/>
+        <div  class="player" id="title_player">TITLE</div>
+        <div class="leftAlignContainer">
+            <div class="audioMeterContainer">
+                                <div class="VUlabels">
+                    <!-- Échelle dBFS -->
+                    <div class="VUlabel" data-db="0">0</div>
+                    <div class="VUlabel" data-db="-6">-6</div>
+                    <div class="VUlabel" data-db="-12">-12</div>
+                    <div class="VUlabel" data-db="-18">-18</div>
+                    <div class="VUlabel" data-db="-24">-24</div>
+                    <div class="VUlabel" data-db="-30">-30</div>
+                    <div class="VUlabel" data-db="-40">-40</div>
+                    <div class="VUlabel" data-db="-50">-50</div>
+                    <div class="VUlabel" data-db="-60">-60</div>
+                </div>
+                <div class="audioMeter">
+                    <div class="meterOutline"></div>
+                    <div id="actualMeter1" class="actualMeter"></div>
+                </div>
+                <div class="audioMeter">
+                    <div class="meterOutline"></div>
+                    <div id="actualMeter2" class="actualMeter"></div>
+                </div>
+                <div class="audioMeter">
+                    <div class="meterOutline"></div>
+                    <div id="actualMeter3"  class="actualMeter"></div>
+                </div>
+                <div class="audioMeter">
+                    <div class="meterOutline"></div>
+                    <div id="actualMeter4"  class="actualMeter"></div>
+                </div>
+
+            </div>
+
+            <div class="LRlabels">
+                <div class="LRlabel">
+                    1
+                </div>
+                <div class="LRlabel">
+                    2
+                </div>
+                <div class="LRlabel">
+                    3
+                </div>
+                <div class="LRlabel">
+                    4
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="jquery.js"></script>
+    <script src="script_player.js"></script>
+</body>
+</html>
