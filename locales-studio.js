@@ -1,6 +1,11 @@
 (function(root) {
     const catalog = typeof module !== 'undefined' ? require('./locales.js') : root.OpenMultiviewLocales;
     catalog.text.push(
+        ['Afficher PROGRAM/PREVIEW en haut', 'Show PROGRAM/PREVIEW at the top', 'Mostrar PROGRAM/PREVIEW arriba'],
+        ['Applique ce choix à tous les écrans de ce PC. Chaque layer peut ensuite être réglé séparément.', 'Apply this choice to every screen on this PC. Individual layers can then be adjusted separately.', 'Aplica esta opción a todas las pantallas de este PC. Después puedes ajustar cada layer por separado.'],
+        ['Repère PROGRAM/PREVIEW en haut', 'PROGRAM/PREVIEW label at the top', 'Etiqueta PROGRAM/PREVIEW arriba'],
+        ['Affichage des repères mis à jour sur tous les écrans de ce PC.', 'Label visibility updated on every screen on this PC.', 'Visibilidad de las etiquetas actualizada en todas las pantallas de este PC.'],
+        ['Réglage des repères invalide.', 'Invalid label setting.', 'Ajuste de etiquetas no válido.'],
         ['Texte de toutes les vignettes', 'Text for all tiles', 'Texto de todas las miniaturas'],
         ['Réglages communs à tous les écrans de ce PC, en Classique comme en OpenMultiview.', 'Shared settings for every screen on this PC, in both Classic and OpenMultiview.', 'Ajustes comunes a todas las pantallas de este PC, tanto en Clásico como en OpenMultiview.'],
         ['Appliquer à tous les écrans', 'Apply to every screen', 'Aplicar a todas las pantallas'],

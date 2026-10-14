@@ -303,6 +303,9 @@ a:not(.app-brand):not(.button-link) { color: var(--mint); text-underline-offset:
 .shared-text-settings .style-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .shared-text-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .shared-text-actions small { flex: 1 1 200px; }
+.role-badge-control { display: flex; align-items: start; gap: 12px; margin-top: 18px; padding-top: 18px; border-top: 1px solid #40525b; }
+.role-badge-control input { flex: 0 0 18px; width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--mint); }
+.role-badge-control span { display: grid; gap: 6px; }
 @media (max-width: 600px) { .shared-text-settings .style-grid { grid-template-columns: 1fr; } }
 .display-connection { position: relative; padding-left: 25px; border-left-width: 1px; }
 .display-connection::before { content: ''; position: absolute; top: 19px; left: 12px; width: 6px; height: 6px; background: #81929a; border-radius: 50%; }

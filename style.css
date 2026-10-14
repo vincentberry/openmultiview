@@ -935,7 +935,12 @@ input#saveURL {
 
 /* The illustrated home-page theme only paints the overlay. Video stays
    transparent and the existing per-layer positioning controls still apply. */
-.layerRoleBadge { display: none; }
+.layerRoleBadge {
+    display: block; position: absolute; top: var(--tile-inset); left: var(--tile-inset); padding: .3em .65em;
+    background: #101010b3; color: #fff; font: 700 max(8px, min(14px, 3cqw))/1.2 Consolas, monospace;
+    letter-spacing: .08em; pointer-events: none;
+}
+.layerBox.title-overlay-top .layerRoleBadge { top: calc(var(--tile-inset) + var(--tile-title-band)); }
 .outerContainer[data-theme="openmultiview"] .layerBox .inputTitle {
     left: 0;
     width: 100%;
@@ -968,7 +973,7 @@ input#saveURL {
     pointer-events: none;
 }
 .outerContainer[data-theme="openmultiview"] .title-overlay-top .layerRoleBadge { top: calc(var(--tile-inset) + var(--tile-title-band)); }
-.outerContainer[data-theme="openmultiview"] .NameMask .layerRoleBadge { display: none; }
+.outerContainer .layerBox.roleBadgeOff .layerRoleBadge { display: none; }
 .outerContainer[data-theme="openmultiview"] .layerBox .layerTimer,
 .outerContainer[data-theme="openmultiview"] .layerBox .leftAlignContainer { background-color: #0c151dd9; border-color: #2c3a42; }
 .outerContainer[data-theme="openmultiview"] .layerBox .layerTimer.timerWarning { color: #ffd394; }

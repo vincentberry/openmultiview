@@ -2,7 +2,7 @@
 const http = require('node:http');
 const {fakeVmix} = require('./helpers/fake-vmix.cjs');
 const vmix = fakeVmix(16);
-const fixture = {hideOverlays: false, omitPositions: false, active: 2};
+const fixture = {hideOverlays: false, omitPositions: false, active: 2, preview: 1};
 const escape = value => String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;'}[c]));
 http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://127.0.0.1');
@@ -13,6 +13,7 @@ http.createServer(async (req, res) => {
         const value = JSON.parse(body);
         for(const key of Object.keys(fixture)) if(typeof value[key] === 'boolean') fixture[key] = value[key];
         if(Number.isInteger(value.active) && vmix.inputs.some(i => i.number === value.active)) fixture.active = value.active;
+        if(Number.isInteger(value.preview) && vmix.inputs.some(i => i.number === value.preview)) fixture.preview = value.preview;
         if(value.media) {
             const input = vmix.inputs.find(i => i.key === value.media.key);
             if(input) for(const key of ['title', 'shortTitle', 'type', 'duration', 'position', 'loop']) {
@@ -39,5 +40,5 @@ http.createServer(async (req, res) => {
         const p = l.position || {zoomX: 100, zoomY: 100, panX: 0, panY: 0};
         return '<overlay index="' + l.index + '" key="' + escape(l.inputKey) + '">' + (fixture.omitPositions ? '' : '<position zoomX="' + p.zoomX / 100 + '" zoomY="' + p.zoomY / 100 + '" panX="' + p.panX / 100 + '" panY="' + p.panY / 100 + '"/>') + '</overlay>';
     }).join('') + '</input>').join('');
-    res.end('<vmix><preview>1</preview><active>' + fixture.active + '</active><inputs>' + inputs + '</inputs><audio><master muted="False" meterF1="0.8" meterF2="0.4"/><busA muted="False" meterF1="0.02" meterF2="0.06"/><busB muted="True" meterF1="0.1" meterF2="0.9"/></audio>' + ['recording', 'external', 'streaming', 'playList', 'multiCorder', 'fullscreen'].map(s => '<' + s + '>False</' + s + '>').join('') + '</vmix>');
+    res.end('<vmix><preview>' + fixture.preview + '</preview><active>' + fixture.active + '</active><inputs>' + inputs + '</inputs><audio><master muted="False" meterF1="0.8" meterF2="0.4"/><busA muted="False" meterF1="0.02" meterF2="0.06"/><busB muted="True" meterF1="0.1" meterF2="0.9"/></audio>' + ['recording', 'external', 'streaming', 'playList', 'multiCorder', 'fullscreen'].map(s => '<' + s + '>False</' + s + '>').join('') + '</vmix>');
 }).listen(8767, '127.0.0.1', () => console.log('Simulated vMix: http://127.0.0.1:8767/api'));

@@ -159,6 +159,7 @@
         const s = state.screens[screenIndex];
         vMixSettings.theme = M.themeFor(s);
         vMixSettings.textStyle = state.textStyle;
+        vMixSettings.roleBadges = state.roleBadges;
         vMixSettings.IP = state.host;
         vMixSettings.port = state.port;
         vMixSettings.multiViewInputs = M.clone(s.inputs);
@@ -354,6 +355,7 @@
         <p id="studioNotice" role="status" aria-live="polite"></p>
         <div class="workspace"><main>
         <section class="studio-view" id="view-layouts" role="tabpanel" aria-labelledby="tab-layouts"><section class="studio-card theme-card" aria-labelledby="themeHeading"><div class="section-intro"><span class="section-kicker">01 / HABILLAGE</span><h2 id="themeHeading">Le style de cet écran</h2><p>Un thème par écran, conservé dans vos modèles et vos URL.</p></div><div id="themeChoices" class="theme-choices" role="group" aria-label="Thème du multiview"></div><p class="theme-help">Appliqué immédiatement aux pages connectées. Vos réglages de texte, d’audio et vos couleurs personnalisées sont conservés.</p>
+        <label class="role-badge-control"><input type="checkbox" id="allRoleBadges"><span><strong>Afficher PROGRAM/PREVIEW en haut</strong><small>Applique ce choix à tous les écrans de ce PC. Chaque layer peut ensuite être réglé séparément.</small></span></label>
         <fieldset class="shared-text-settings"><legend>Texte de toutes les vignettes</legend><p>Réglages communs à tous les écrans de ce PC, en Classique comme en OpenMultiview.</p><div class="style-grid">
         <label class="style-field">Position du texte<select id="sharedTitlePosition"><option value="overlay-bottom">Sur l’image, en bas</option><option value="overlay-top">Sur l’image, en haut</option><option value="below">Sous la vignette</option><option value="above">Au-dessus</option></select></label>
         <label class="style-field">Fond du texte<select id="sharedTitleBackground"><option value="true">Avec fond</option><option value="false">Transparent</option></select></label>
@@ -421,11 +423,20 @@
         const theme = M.themeFor(state.screens[screenIndex]);
         $('#themeChoices button[data-theme]').each(function() { $(this).attr('aria-pressed', String(this.dataset.theme === theme)); });
         $('#layoutPreview').attr('data-theme', theme);
+        $('#allRoleBadges').prop('checked', M.tileDefaultsFor(theme, state.textStyle, state.roleBadges).roleBadge);
         const text = M.textStyleFor(state);
         $('#sharedTitlePosition').val(text.titlePosition);
         $('#sharedTitleBackground').val(String(text.titleBackground));
         $('#sharedTitleFontSize').val(text.titleFontSize);
     }
+    $('#allRoleBadges').on('change', function() {
+        if(building || applying) return;
+        publish();
+        state = M.applyRoleBadges(state, this.checked, vMixInputs);
+        state.updated = M.nextUpdate(state.updated);
+        persist(); loadScreen();
+        notice('Affichage des repères mis à jour sur tous les écrans de ce PC.');
+    });
     $('#applySharedText').on('click', () => {
         if(building || applying) return;
         const style = {titlePosition: $('#sharedTitlePosition').val(), titleBackground: $('#sharedTitleBackground').val() === 'true', titleFontSize: Number($('#sharedTitleFontSize').val())};
@@ -490,7 +501,7 @@
             $('#' + prefix + prop + 'Number').attr('aria-label', prefix + ' · ' + prop);
         });
     });
-    const flagLabels = {tileEnabled: 'Habillage visible', tileTally: 'Couleurs tally', tileName: 'Nom de la source', tileVU: 'Vumètre', tileTimer: 'Décompte vidéo / infos liste', tileFrame: 'Cadre'};
+    const flagLabels = {tileEnabled: 'Habillage visible', tileTally: 'Couleurs tally', tileName: 'Nom de la source', tileRoleBadge: 'Repère PROGRAM/PREVIEW en haut', tileVU: 'Vumètre', tileTimer: 'Décompte vidéo / infos liste', tileFrame: 'Cadre'};
     Object.entries(flagLabels).forEach(([id, label]) => {
         $('#' + id).parent().contents().filter(function() { return this.nodeType === Node.TEXT_NODE; }).remove();
         $('#' + id).parent().append(document.createTextNode(label));
@@ -570,7 +581,7 @@
         B.candidates(vMixInputs, s).filter(i => i.key !== layer.sourceKey).forEach(input => source.append(new Option('Entrée ' + input.number + ' · ' + (input.title || input.key), input.key, false, !blank && input.key === layer.inputKey)));
         if(blank) source.val('');
         const settings = getTileSettings(layer.layerKey, layer.inputKey);
-        const checks = {tileEnabled: 'enabled', tileTally: 'tally', tileName: 'name', tileVU: 'vu', tileTimer: 'timer', tileFrame: 'frame'};
+        const checks = {tileEnabled: 'enabled', tileTally: 'tally', tileName: 'name', tileRoleBadge: 'roleBadge', tileVU: 'vu', tileTimer: 'timer', tileFrame: 'frame'};
         Object.entries(checks).forEach(([id, key]) => $('#' + id).prop('checked', settings[key]));
         $('[data-tile-style]').each(function() { $(this).val(String(settings[this.dataset.tileStyle])); });
     }
@@ -609,6 +620,8 @@
         layers.forEach((o, n) => {
             if(o.disabled || o.pending) return;
             const settings = getTileSettings(o.layerKey, o.inputKey);
+            const displayName = getLayerDisplayName(o);
+            const monitorRole = getLayerMonitorRole(M.resolveSource(vMixInputs, o.inputKey));
             const tally = M.tallyState(settings, o.inputKey, vMixSettings.previewKey, vMixSettings.programKey);
             const frame = settings.enabled && settings.frame ? Math.max(0, Number(settings.borderWidth) || 0) : 0;
             const button = $('<button type="button" class="preview-layer">').addClass(tileSettingsClasses(o)).addClass(tally)
@@ -616,12 +629,12 @@
                     '--preview-title-size': Math.max(5, Math.min(32, settings.titleFontSize * .32)) + 'px',
                     '--preview-frame-width': (frame ? Math.max(.5, frame * .32) : 0) + 'px', '--preview-frame-color': settings.borderColor,
                     '--preview-tally-color': tally === 'program' ? settings.programColor : tally === 'preview' ? settings.previewColor : '#ffffff'})
-                .append($('<span class="preview-label" data-source-name>').text(o.inputName).prop('hidden', !settings.enabled || !settings.name))
+                .append($('<span class="preview-label" data-source-name>').text(displayName).prop('hidden', !settings.enabled || !settings.name))
                 .attr('data-role', o.role || '')
                 .attr('data-input-key', o.inputKey)
-                .attr({title: o.layerName + ' · ' + o.inputName, 'aria-label': 'Configurer la vignette ' + (n + 1) + ' · ' + o.inputName, 'aria-pressed': String(o.layerKey === vMixSettings.selectedInputKey)})
+                .attr({title: o.layerName + ' · ' + o.inputName + (displayName !== o.inputName ? ' → ' + displayName : ''), 'aria-label': 'Configurer la vignette ' + (n + 1) + ' · ' + displayName, 'aria-pressed': String(o.layerKey === vMixSettings.selectedInputKey)})
                 .on('click', () => selectLayer(o.layerKey)).appendTo(box);
-            if(settings.enabled && settings.name && M.themeFor(state.screens[screenIndex]) === 'openmultiview' && o.role) button.append($('<i class="preview-role">').text(o.role === 'PGM' ? 'PROGRAM' : 'PREVIEW'));
+            if(settings.enabled && settings.roleBadge && monitorRole) button.append($('<i class="preview-role">').text(monitorRole === 'PGM' ? 'PROGRAM' : 'PREVIEW'));
         });
     }
     function renderBuilderSources() {

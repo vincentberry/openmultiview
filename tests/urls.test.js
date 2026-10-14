@@ -329,3 +329,18 @@ test('shared text defaults and later individual overrides restore from portable 
         assert.deepEqual(view.recalled().textStyle,config.textStyle);
     }
 });
+
+test('role labels can be hidden for the PC while one layer remains visible, including bridge and portable URL recall', async () => {
+    const config={version:1,pc:'labels-demo',host:'127.0.0.1',port:'8767',updated:2,roleBadges:false,
+        screens:[{...M.screen(['root']),theme:'openmultiview',tiles:[{key:'output-layer',value:{roleBadge:true,name:false}}]}]};
+    for(const linked of [false,true]) {
+        const view=viewer(M.recallURL('http://localhost/',config,0,{linked}),{remote:config,studio:true});
+        await new Promise(resolve=>setImmediate(resolve));
+        assert.equal(view.scope.getTileSettings('new-layer').roleBadge,false);
+        assert.equal(view.scope.getTileSettings('output-layer').roleBadge,true);
+        assert.equal(view.scope.getTileSettings('output-layer').name,false);
+        assert.equal(view.recalled().roleBadges,false);
+        assert.equal(view.scope.tileSettingsClasses({layerKey:'output-layer',inputKey:'output'}).includes('roleBadgeOff'),false);
+        assert.equal(view.scope.tileSettingsClasses({layerKey:'new-layer',inputKey:'preview'}).includes('roleBadgeOff'),true);
+    }
+});

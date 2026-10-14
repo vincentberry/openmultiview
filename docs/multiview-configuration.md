@@ -43,6 +43,20 @@ Classique, bandeaux en OpenMultiview, position du texte, fond transparent ou
 coloré et tally provenant de l’état actuel de vMix. Le contour de sélection est
 séparé du tally. Le plan ne fournit pas de retour vidéo.
 
+Pour une sortie OUTPUT / PGM ou une entrée PREVIEW / PVW, le bandeau du bas
+affiche le nom de la source actuellement à l’antenne ou en preview. Il suit les
+changements de vMix sans changer l’ID ni l’affectation du layer. Les Mix utilisent
+leur propre source active ou preview ; les médias dont le nom contient ces mots
+conservent leur nom.
+
+**Afficher PROGRAM/PREVIEW en haut** règle les repères de tous les écrans du PC.
+Dans **Sources & layers → Affichage**, **Repère PROGRAM/PREVIEW en haut** permet
+d’affiner chaque vignette. Ce réglage est indépendant de **Nom de la source** :
+vous pouvez conserver le repère du haut en masquant le bandeau du bas, ou
+l’inverse. Les deux thèmes le prennent en charge, et le choix est mémorisé dans
+les modèles et les URL. Sans modification, les anciennes configurations restent
+sans repère en Classique et avec repère en OpenMultiview.
+
 ## Démarrage sur le PC vMix
 
 Avec Node.js installé, lancer dans le dossier du projet :

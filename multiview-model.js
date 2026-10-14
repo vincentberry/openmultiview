@@ -18,8 +18,9 @@
     ];
     const themeFor = s => themes.some(t => t.id === s.theme) ? s.theme : 'classic';
     const textFields = ['titlePosition', 'titleBackground', 'titleFontSize'];
-    function tileDefaultsFor(theme = 'classic', textStyle) {
-        return {...tileDefaults, ...(theme === 'openmultiview' ? {borderWidth: 2, borderColor: '#536b74', previewColor: '#66e5b5', programColor: '#ff7164'} : {}), ...textStyle};
+    function tileDefaultsFor(theme = 'classic', textStyle, roleBadges) {
+        return {...tileDefaults, roleBadge: theme === 'openmultiview', ...(theme === 'openmultiview' ? {borderWidth: 2, borderColor: '#536b74', previewColor: '#66e5b5', programColor: '#ff7164'} : {}), ...textStyle,
+            ...(typeof roleBadges === 'boolean' ? {roleBadge: roleBadges} : {})};
     }
     function textStyleFor(config) {
         return Object.fromEntries(textFields.map(key => [key, config.textStyle?.[key] ?? tileDefaults[key]]));
@@ -43,6 +44,18 @@
     }
     function tallyState(settings, inputKey, previewKey, programKey) {
         return settings.tally && inputKey ? inputKey === programKey ? 'program' : inputKey === previewKey ? 'preview' : '' : '';
+    }
+    function applyRoleBadges(config, enabled, inputs = []) {
+        if(typeof enabled !== 'boolean') throw new Error('Réglage des repères invalide.');
+        const next = validate(config);
+        next.roleBadges = enabled;
+        next.screens.forEach(screen => {
+            configurableLayers(screen, inputs).forEach(layer => {
+                if(!screen.tiles.some(tile => tile.key === layer.layerKey)) screen.tiles.push({key: layer.layerKey, value: {}});
+            });
+            screen.tiles.forEach(tile => tile.value.roleBadge = enabled);
+        });
+        return next;
     }
     function changeTheme(tiles, previous, next) {
         const before = tileDefaultsFor(previous), after = tileDefaultsFor(next);
@@ -257,6 +270,7 @@
         if (typeof value.pc !== 'string' || !value.pc || value.pc.length > 80) throw new Error('Identifiant PC invalide');
         if (!/^[a-zA-Z0-9.:-]+$/.test(value.host) || !Number.isInteger(+value.port) || +value.port < 1 || +value.port > 65535) throw new Error('Adresse vMix invalide');
         if(value.textStyle !== undefined && !validTextStyle(value.textStyle)) throw new Error('Réglages du texte invalides. Choisissez une taille entre 8 et 100.');
+        if(value.roleBadges !== undefined && typeof value.roleBadges !== 'boolean') throw new Error('Réglage des repères invalide.');
         value.screens.forEach(s => {
             if (!Array.isArray(s.inputs) || !s.inputs.length || s.inputs.some(n => !validReference(n))) throw new Error('Entrées invalides');
             if (!Array.isArray(s.tiles) || !Array.isArray(s.extras) || !Array.isArray(s.layout)) throw new Error('Écran invalide');
@@ -353,15 +367,16 @@
     function pack(config) {
         return {v: 1, p: config.pc, h: config.host, o: config.port, u: config.updated, s: config.screens.map(s => [
             s.inputs, s.extras.map(e => extraFields.map(k => e[k] === undefined ? null : e[k])),
-            s.tiles.map(t => [t.key, Object.fromEntries(Object.entries(t.value).filter(([k, v]) => k === 'vu' && s.hideOutputAudioByDefault === true || tileDefaultsFor(themeFor(s), config.textStyle)[k] !== v))]),
+            s.tiles.map(t => [t.key, Object.fromEntries(Object.entries(t.value).filter(([k, v]) => k === 'vu' && s.hideOutputAudioByDefault === true || tileDefaultsFor(themeFor(s), config.textStyle, config.roleBadges)[k] !== v))]),
             s.layout.map(p => [p.source, p.layer, ...['zoomX', 'zoomY', 'panX', 'panY'].map(k => Math.round(p[k] * 100000) / 100000)]),
             s.managed || null, s.videoInputs || [], (s.layerSources || []).map(r => [r.parent, r.layer, r.source]), s.spacing ?? null, s.hideOutputAudioByDefault ?? null, s.theme ?? null
-        ]), ...(config.textStyle ? {x: textFields.map(key => config.textStyle[key])} : {})};
+        ]), ...(config.textStyle ? {x: textFields.map(key => config.textStyle[key])} : {}), ...(typeof config.roleBadges === 'boolean' ? {b: config.roleBadges} : {})};
     }
     function unpack(value) {
         if(value.v !== 1) return validate(value);
         return validate({version: 1, pc: value.p, host: value.h, port: value.o, updated: value.u,
             ...(value.x ? {textStyle: Object.fromEntries(textFields.map((key, i) => [key, value.x[i]]))} : {}),
+            ...(value.b !== undefined ? {roleBadges: value.b} : {}),
             screens: value.s.map(s => ({inputs: s[0], extras: s[1].map(e => Object.fromEntries(extraFields.map((k, i) => [k, e[i]]).filter(p => p[1] !== null))),
                 tiles: s[2].map(t => ({key: t[0], value: t[1]})),
                 layout: s[3].map(p => ({source: p[0], layer: p[1], zoomX: p[2], zoomY: p[3], panX: p[4], panY: p[5]})),
@@ -425,11 +440,11 @@
             return key !== null ? 'key:' + encodeURIComponent(key) : String(ref + 1);
         }).join(',');
         const masks = clone(s.tiles);
-        if(config.textStyle) {
+        if(config.textStyle || typeof config.roleBadges === 'boolean') {
             configurableLayers(s, inputs).forEach(layer => {
                 if(!masks.some(tile => tile.key === layer.layerKey)) masks.push({key: layer.layerKey, value: {}});
             });
-            masks.forEach(tile => tile.value = {...config.textStyle, ...tile.value});
+            masks.forEach(tile => tile.value = {...config.textStyle, ...(typeof config.roleBadges === 'boolean' ? {roleBadge: config.roleBadges} : {}), ...tile.value});
         }
         const active = activeLayersFor(s, inputs);
         if(s.hideOutputAudioByDefault === true) {
@@ -460,7 +475,7 @@
         target.search = 'Inputs=' + sourceList + '&' + parameters.map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
         return safeURL(target.href);
     }
-    const api = {clone, screen, validate, templates, templateFrames, positions, resizeSpacing, spacingFor, DEFAULT_SPACING, LEGACY_SPACING, pack, unpack, legacyPC, recallURL, safeURL, urlParameters, MAX_REQUEST_TARGET, layerNumber, MAX_SCREENS, HTML_LAYER, themes, themeFor, tileDefaultsFor, changeTheme, textStyleFor, applyTextStyle, tallyState,
+    const api = {clone, screen, validate, templates, templateFrames, positions, resizeSpacing, spacingFor, DEFAULT_SPACING, LEGACY_SPACING, pack, unpack, legacyPC, recallURL, safeURL, urlParameters, MAX_REQUEST_TARGET, layerNumber, MAX_SCREENS, HTML_LAYER, themes, themeFor, tileDefaultsFor, changeTheme, textStyleFor, applyTextStyle, tallyState, applyRoleBadges,
         parseSourceReference, resolveSource, isBrowser, isGeneratedMultiview, collectLayers, role, audioRoute, audioLevels, nextUpdate, isLoopbackURL, syncBases, PUBLIC_ORIGINS,
         compose, localPosition, migrateTileSettings, layerKey, activeLayersFor, videoLayersFor, layoutFor, configurableLayers};
     if (typeof module !== 'undefined') module.exports = api;

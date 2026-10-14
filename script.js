@@ -234,7 +234,7 @@ function getSourceInputLabel(ref){
 }
 
 function getDefaultTileSettings(inputKey, hideOutputAudio = vMixSettings.hideOutputAudioByDefault){
-    var defaultSettings = MultiviewModel.tileDefaultsFor(vMixSettings.theme, vMixSettings.textStyle);
+    var defaultSettings = MultiviewModel.tileDefaultsFor(vMixSettings.theme, vMixSettings.textStyle, vMixSettings.roleBadges);
 
     var input = getInputStateByKey(inputKey);
     if(hideOutputAudio && input && (/^Output$/i.test(input.type || "") || MultiviewModel.role(input) === "PGM")){
@@ -324,6 +324,7 @@ function getLayerMenuItems(){
         { setting: "enabled", label: "View" },
         { setting: "tally", label: "Tally" },
         { setting: "name", label: "Name" },
+        { setting: "roleBadge", label: "PROGRAM / PREVIEW" },
         { setting: "vu", label: "VU" },
         { setting: "timer", label: "Timer" },
         { setting: "frame", label: "Frame" },
@@ -372,6 +373,7 @@ function tileSettingsClasses(overlay){
     if(!settings.name){
         classes.push("NameMask");
     }
+    if(!settings.roleBadge) classes.push("roleBadgeOff");
     if(!settings.vu){
         classes.push("vuOff");
     }
@@ -462,6 +464,7 @@ function vMixRefresh(data){
         
     }
     updateTally();
+    updateLayerLabels();
     updateVU();
     updateLayerTimers();
     vMixSettings.lastApiSuccess = Date.now();
@@ -614,6 +617,36 @@ function getMixActiveInput(mixNumber){
     return getInputStateByNumber(parseFloat(mix.getElementsByTagName("active")[0].innerHTML));
 }
 
+function getLayerMonitorRole(inputState){
+    var media = getPlayerTimerInput(inputState);
+    if(!inputState || media && /^(Video|VideoList|Audio|Image|Photos)$/i.test(media.type || "")) return "";
+    return MultiviewModel.role(inputState) || (/^Preview$/i.test(inputState.type || "") ? "PVW" : /^(Output|Mix)$/i.test(inputState.type || "") || getMixNumber(inputState) ? "PGM" : "");
+}
+
+function getLayerDisplayInput(inputState){
+    var role = getLayerMonitorRole(inputState);
+    if(!role) return inputState;
+    var mixNumber = getMixNumber(inputState);
+    if(role === "PGM") return (mixNumber ? getMixActiveInput(mixNumber) : getInputStateByNumber(vMixSettings.programNumber)) || inputState;
+    if(!mixNumber || mixNumber === 1) return getInputStateByNumber(vMixSettings.previewNumber) || inputState;
+    var mix = lastResponse && lastResponse.querySelector(`mix[number="${mixNumber}"]`);
+    var preview = mix && mix.getElementsByTagName("preview")[0];
+    return (preview && getInputStateByNumber(Number(preview.textContent || preview.innerHTML))) || inputState;
+}
+
+function getLayerDisplayName(overlay){
+    var input = getLayerDisplayInput(getInputStateByKey(overlay.inputKey));
+    return input && (input.title || input.shortTitle) || overlay.inputName;
+}
+
+function updateLayerLabels(){
+    multiViewOverlays.forEach(function(overlay){
+        var label = getLayerDisplayName(overlay);
+        var title = $(document.getElementById(overlay.layerKey)).find(".inputTitle");
+        if(title.text() !== label) title.text(label).attr("title", label);
+    });
+}
+
 function getTimerInputForLayer(inputState){
     if(!inputState){
         return undefined;
@@ -760,8 +793,8 @@ function refresh(){
             top:    ${((overlay.panY*-1)/2) + 50}%;
             ${getLayerStyleVariables(overlay)}
         ">
-        <div class="inputTitle" title="${escapeHTML(overlay.inputName)}">${escapeHTML(overlay.inputName)}</div>
-        ${['PGM', 'PVW'].includes(MultiviewModel.role(vMixInputs[inputIndex] || {})) ? '<span class="layerRoleBadge">' + (MultiviewModel.role(vMixInputs[inputIndex]) === 'PGM' ? 'PROGRAM' : 'PREVIEW') + '</span>' : ''}
+        <div class="inputTitle" title="${escapeHTML(getLayerDisplayName(overlay))}">${escapeHTML(getLayerDisplayName(overlay))}</div>
+        ${getLayerMonitorRole(vMixInputs[inputIndex]) ? '<span class="layerRoleBadge">' + (getLayerMonitorRole(vMixInputs[inputIndex]) === 'PGM' ? 'PROGRAM' : 'PREVIEW') + '</span>' : ''}
         ${generateVU(inputIndex != -1 && vMixInputs[inputIndex].audio && getTileSettings(overlay.layerKey, overlay.inputKey).vu, overlay)}
         ${generateLayerTimer(inputIndex != -1 ? vMixInputs[inputIndex] : undefined, overlay)}
         </div>
@@ -1067,6 +1100,7 @@ function renderSelectedInputPanel(){
         $("#tileEnabled").prop("checked", settings.enabled);
         $("#tileTally").prop("checked", settings.tally);
         $("#tileName").prop("checked", settings.name);
+        $("#tileRoleBadge").prop("checked", settings.roleBadge);
         $("#tileVU").prop("checked", settings.vu);
         $("#tileTimer").prop("checked", settings.timer);
         $("#tileFrame").prop("checked", settings.frame);
@@ -1234,6 +1268,10 @@ $("#tileTally").on("input", function(e){
 
 $("#tileName").on("input", function(e){
     updateSelectedTileSetting("name", e.target.checked);
+});
+
+$("#tileRoleBadge").on("input", function(e){
+    updateSelectedTileSetting("roleBadge", e.target.checked);
 });
 
 $("#tileVU").on("input", function(e){
