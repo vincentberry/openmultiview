@@ -1,6 +1,7 @@
 (function(root) {
     const catalog = typeof module !== 'undefined' ? require('./locales.js') : root.OpenMultiviewLocales;
     catalog.text.push(
+        ['Mémorisez la disposition, les sources et l’habillage de tous vos écrans. Les modèles sont enregistrés dans ce navigateur, pour ce PC.', 'Save the layout, sources and overlays for all your screens. Presets are stored in this browser, for this PC.', 'Guarda la disposición, las fuentes y las capas gráficas de todas tus pantallas. Los modelos se guardan en este navegador, para este PC.'],
         ['Afficher PROGRAM/PREVIEW en haut', 'Show PROGRAM/PREVIEW at the top', 'Mostrar PROGRAM/PREVIEW arriba'],
         ['Applique ce choix à tous les écrans de ce PC. Chaque layer peut ensuite être réglé séparément.', 'Apply this choice to every screen on this PC. Individual layers can then be adjusted separately.', 'Aplica esta opción a todas las pantallas de este PC. Después puedes ajustar cada layer por separado.'],
         ['Repère PROGRAM/PREVIEW en haut', 'PROGRAM/PREVIEW label at the top', 'Etiqueta PROGRAM/PREVIEW arriba'],

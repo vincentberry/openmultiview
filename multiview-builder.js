@@ -51,18 +51,21 @@
     function selectSources(inputs, screen, template) {
         const pool = candidates(inputs, screen);
         if(screen.videoInputs && screen.videoInputs.length) {
-            if(screen.videoInputs.length < template.slots.length) throw new Error(`Sélectionnez ${template.slots.length} sources vidéo au minimum, ou videz la sélection pour l’affectation automatique.`);
-            return screen.videoInputs.slice(0, template.slots.length).map(key => { const input = pool.find(i => i.key === key); if(!input) throw new Error('Source vidéo introuvable : ' + key); return input; });
+            const selected = screen.videoInputs.map(key => pool.find(i => i.key === key)).filter(Boolean);
+            const reserved = template.slots.map(slot => ['PGM', 'PVW'].includes(slot.label) ? pool.find(i => M.role(i) === slot.label) || null : null);
+            const regular = selected.filter(i => !reserved.includes(i));
+            let n = 0;
+            return template.slots.map((slot, index) => ['PGM', 'PVW'].includes(slot.label) ? reserved[index] : regular[n++] || null);
         }
-        if(screen.managed && screen.managed.template === template.id && screen.managed.sources.length === template.slots.length && screen.managed.sources.every(key => pool.some(i => i.key === key))) return screen.managed.sources.map(key => pool.find(i => i.key === key));
+        if(screen.managed && screen.managed.template === template.id && screen.managed.sources.length === template.slots.length) return screen.managed.sources.map((key, n) => pool.find(i => i.key === key) || (['PGM', 'PVW'].includes(template.slots[n].label) ? pool.find(i => M.role(i) === template.slots[n].label) : null) || null);
         const chosen = [];
         for(const slot of template.slots) {
-            if(slot.label !== 'PGM' && slot.label !== 'PVW') continue;
-            const input = pool.find(i => M.role(i) === slot.label && !chosen.includes(i));
-            if(input) chosen.push(input);
+            if(slot.label !== 'PGM' && slot.label !== 'PVW') { chosen.push(null); continue; }
+            chosen.push(pool.find(i => M.role(i) === slot.label && !chosen.includes(i)) || null);
         }
-        pool.forEach(i => { if(chosen.length < template.slots.length && !chosen.includes(i)) chosen.push(i); });
-        if(chosen.length < template.slots.length) throw new Error(`Ce preset demande ${template.slots.length} sources vidéo (${pool.length} disponibles). Ajoutez les caméras ou médias dans vMix.`);
+        for(let n = 0; n < chosen.length; n++) {
+            if(!chosen[n] && !['PGM', 'PVW'].includes(template.slots[n].label)) chosen[n] = pool.find(i => !chosen.includes(i)) || null;
+        }
         return chosen;
     }
     async function build({screen, template, pc, index, readInputs, command, save, displayURL, reusableRoot}) {
@@ -73,7 +76,7 @@
         let managed = screen.managed ? M.clone(screen.managed) : {root: reusableRoot || null, browser: null, parts: [], sources: [], active: {}};
         managed.spacing = M.spacingFor(screen);
         managed.template = template.id;
-        managed.sources = sources.map(i => i.key);
+        managed.sources = sources.map(i => i ? i.key : null);
         let planned;
         const remember = async () => save(M.clone(managed), planned && M.clone(planned));
         const ensure = (kind, label, current, record) => ensureInput({kind, label, current, record, pc, index, readInputs, command, remember});
@@ -82,11 +85,11 @@
         for(let n = 0; n < partCount; n++) await ensure('part', 'Vignettes ' + (n + 1), managed.parts[n], key => managed.parts[n] = key);
         const usedParts = managed.parts.slice(0, partCount);
         inputs = await readInputs();
-        const videoLayers = M.videoLayersFor(managed).map(l => ({...l, role: M.role(sources.find(i => i.key === l.inputKey))}));
+        const videoLayers = M.videoLayersFor(managed).map((l, n) => ({...l, role: sources[n] ? M.role(sources[n]) : template.slots[n].label}));
         const layout = M.positions(template.slots, videoLayers, managed.spacing);
         planned = {inputs: [rootKey], layout, layers: videoLayers};
         managed.active = Object.fromEntries([rootKey, ...managed.parts].map(key => [key, []]));
-        for(const layer of videoLayers) managed.active[layer.sourceKey].push(layer.layerNumber);
+        for(const layer of videoLayers) if(layer.inputKey) managed.active[layer.sourceKey].push(layer.layerNumber);
         if(partCount) managed.active[rootKey] = usedParts.map((_, i) => i + 1);
         const browserSlot = HTML_LAYER;
         managed.active[rootKey].push(browserSlot);
@@ -103,10 +106,11 @@
         const full = {zoomX: 100, zoomY: 100, panX: 0, panY: 0};
         for(let n = 0; n < usedParts.length; n++) await attach(rootKey, n + 1, usedParts[n], full);
         for(const layer of videoLayers) {
+            if(!layer.inputKey) continue;
             const position = layout.find(p => p.source === layer.sourceKey && p.layer === layer.layerNumber);
             await attach(layer.sourceKey, layer.layerNumber, layer.inputKey, position);
         }
-        const expected = [...videoLayers, ...usedParts.map((inputKey, n) => ({sourceKey: rootKey, layerNumber: n + 1, inputKey}))];
+        const expected = [...videoLayers.filter(l => l.inputKey), ...usedParts.map((inputKey, n) => ({sourceKey: rootKey, layerNumber: n + 1, inputKey}))];
         const result = await repairBrowser({screen: {...screen, managed, ...planned}, pc, index, readInputs, command, displayURL, expected,
             save: async next => { managed = next.managed; await remember(); }});
         return {managed: result.managed, ...planned};
@@ -159,7 +163,11 @@
         if(!next.layerSources.length) delete next.layerSources;
         await save(M.clone(next));
         // Keep the browser attached even if navigation fails; a retry reuses its ID.
-        if(displayURL) await command('BrowserNavigate', {Input: browser.key, Value: await displayURL()});
+        if(displayURL) {
+            await command('BrowserNavigate', {Input: browser.key, Value: await displayURL()});
+            // Fragment-only changes do not restart the viewer by themselves.
+            await command('BrowserReload', {Input: browser.key});
+        }
         await confirmLayers([...expected, {sourceKey: parent.key, layerNumber: HTML_LAYER, inputKey: browser.key}], readInputs);
         delete managed.htmlPending;
         await save(M.clone(next));

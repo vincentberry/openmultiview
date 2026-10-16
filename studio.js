@@ -18,6 +18,9 @@
     let displayBridgeLoaded = false;
     let bridgeBusy = false;
     let bridgeWriteTimer;
+    let htmlURLTimer;
+    let htmlURLBusy = false;
+    const htmlURLs = new Map();
     let nextBridgeProbe = 0;
     const bridgeBases = M.syncBases(location.href);
     let bridgeBase = bridgeBases[0];
@@ -75,7 +78,7 @@
         return M.recallURL(location.href, state, index, {configPage: config, inputs: vMixInputs, language: window.OpenMultiviewI18n?.language()});
     }
     async function browserURL(index) {
-        if(!bridge) return url(index);
+        if(!bridge) return M.browserRecallURL(location.href, state, index, window.OpenMultiviewI18n?.language());
         // Save before navigating CEF. A short PC/screen link also keeps the
         // BrowserNavigate API command below vMix's request-size limit.
         clearTimeout(bridgeWriteTimer);
@@ -123,6 +126,10 @@
         try { localStorage.setItem(key(state.pc), JSON.stringify(state)); }
         catch (_) { notice('Stockage local indisponible : conservez les URL de rappel.'); }
         if(channel) channel.postMessage(state);
+        if(control) {
+            clearTimeout(htmlURLTimer);
+            htmlURLTimer = setTimeout(updateHTMLURLs, 1000);
+        }
         if(bridge && control) {
             clearTimeout(bridgeWriteTimer);
             bridgeWriteTimer = setTimeout(async () => {
@@ -133,6 +140,30 @@
                 } catch (_) { notice('Serveur local indisponible. Les URL conservent les réglages ; relancez node server.js.'); }
             }, 150);
         }
+    }
+    async function updateHTMLURLs() {
+        if(building || applying || htmlURLBusy) {
+            htmlURLTimer = setTimeout(updateHTMLURLs, 1000);
+            return;
+        }
+        htmlURLBusy = true;
+        try {
+            for(let index = 0; index < state.screens.length; index++) {
+                const screen = state.screens[index];
+                if(!screen.managed?.browser || screen.managed.htmlPending) continue;
+                const signature = JSON.stringify([state.host, state.port, screen, state.textStyle, state.roleBadges, bridge]);
+                if(htmlURLs.get(screen.managed.browser) === signature) continue;
+                const browser = screen.managed.browser;
+                await command('BrowserNavigate', {Input: browser, Value: await browserURL(index)});
+                await command('BrowserReload', {Input: browser});
+                htmlURLs.set(browser, signature);
+            }
+        } catch(error) {
+            notice('Mise à jour de la source HTML impossible : ' + error.message);
+            clearTimeout(htmlURLTimer);
+            htmlURLTimer = setTimeout(updateHTMLURLs, 30000);
+        }
+        finally { htmlURLBusy = false; }
     }
     function syncExtras() {
         extras.forEach(e => {
@@ -188,7 +219,7 @@
         $('#activeScreen').empty();
         state.screens.forEach((s, i) => $('#activeScreen').append(new Option('Écran ' + (i + 1), i, false, i === screenIndex)));
         links();
-        if(control) { renderThemeControls(); renderBuilderSources(); renderConnections(); }
+        if(control) { renderThemeControls(); renderScreenControls(); renderConnections(); }
     }
     function receive(value, authoritative = false) {
         if(legacyStandalone) return;
@@ -304,7 +335,7 @@
         finally { bridgeBusy = false; }
     }
     pollBridge();
-    setInterval(() => { if(bridge || Date.now() >= nextBridgeProbe) { nextBridgeProbe = Date.now() + 5000; pollBridge(); } }, 1000);
+    setInterval(() => { if(bridge || Date.now() >= nextBridgeProbe) { nextBridgeProbe = Date.now() + 30000; pollBridge(); } }, 1000);
     window.addEventListener('storage', event => {
         if(event.key && event.key.startsWith(key(state.pc) + '.presence.')) {
             if(event.newValue) { try { receiveReport(JSON.parse(event.newValue)); } catch (_) {} }
@@ -317,7 +348,7 @@
     });
 
     const oldRefresh = refresh;
-    refresh = function() { oldRefresh(); if(control) { publish(); renderLayerFields(); drawPreview(); renderBuilderSources(); if(building) $('.config-page input, .config-page select, .config-page button').prop('disabled', true); } else links(); };
+    refresh = function() { oldRefresh(); if(control) { publish(); renderLayerFields(); drawPreview(); renderScreenControls(); if(building) $('.config-page input, .config-page select, .config-page button').prop('disabled', true); } else links(); };
     const oldPanel = renderSelectedInputPanel;
     renderSelectedInputPanel = function() {
         const wanted = vMixSettings.selectedInputKey;
@@ -341,7 +372,7 @@
     $('.settingsHandle, .settingsURL').remove();
     const extraSettings = $('.settings').detach();
     const sources = extraSettings.find('.sources').detach();
-    const sourceSettings = sources.find('.sourceSettings').detach();
+    sources.find('.sourceSettings').remove();
     const panel = sources.find('#selectedInputPanel').detach().addClass('studio-card');
     $('.hideContainer').append(`
         <header class="studio-header"><div class="studio-heading"><a class="app-brand" href="home.html"><span class="app-brand-mark"><img src="assets/openmultiview-icon.png" alt="" width="48" height="48"></span>OpenMultiview</a><h1>Votre régie, à votre mesure.</h1></div><div class="studio-header-tools"><a href="guide.html" class="guide-link">Guide de démarrage ↗</a><span class="local-badge">Contrôle sur ce PC</span></div></header>
@@ -363,24 +394,21 @@
         <small>Avec un fond transparent, le tally colore le texte.</small><div class="shared-text-actions"><button id="applySharedText" class="primary-button" type="button">Appliquer à tous les écrans</button><small>Remplace ces trois réglages sur toutes les vignettes. Vous pouvez ensuite ajuster chaque layer.</small></div></fieldset></section><div class="studio-card"><div class="section-intro"><span class="section-kicker">02 / DISPOSITION</span><h2>Modèles de disposition</h2><p>Vignettes 16:9. Choisissez un modèle pour créer les entrées nécessaires dans vMix.</p></div>
         <div class="spacing-controls"><label for="presetSpacing">Espacement entre les vignettes</label><div class="spacing-inputs"><input id="presetSpacingSlider" type="range" min="0" max="20" step="1" aria-label="Espacement des vignettes" aria-describedby="spacingHelp"><div class="spacing-number"><input id="presetSpacing" type="number" min="0" max="20" step="1" aria-label="Espacement en pourcentage" aria-describedby="spacingHelp"><span>%</span></div><button id="applySpacing" type="button">Appliquer l’espacement</button></div><small id="spacingHelp">0 % réduit les marges au minimum. Ajoutez de l’espace pour du texte ou des vumètres placés à l’extérieur.</small></div>
         <div class="layout-filters" role="group" aria-label="Filtrer les dispositions"><button type="button" data-layout-filter="all" aria-pressed="true">Tous</button><button type="button" data-layout-filter="production" aria-pressed="false">Avec PGM / PVW</button><button type="button" data-layout-filter="grid" aria-pressed="false">Grilles</button><button type="button" data-layout-filter="dual" aria-pressed="false">2 écrans</button></div><div id="layoutGallery" class="layout-gallery"></div></div>
-        <section class="studio-card"><div class="builder-header"><div><span class="section-kicker">03 / SOURCES</span><h2>Sources du preset</h2><p>Sans sélection, les sources sont affectées automatiquement.</p></div><button id="autoAssignSources" type="button" class="subtle-button">Affectation automatique</button></div>
-        <div class="builder-controls"><select id="buildSources" multiple hidden aria-label="Sources vidéo à utiliser"></select>
-        <div class="source-search"><label class="field">Rechercher une source<input id="sourceSearch" type="search" placeholder="Nom ou numéro de l’entrée"></label><button id="selectAllSources" type="button">Tout sélectionner</button></div><div id="sourceChoices" class="source-choices" role="group" aria-label="Sources vidéo à utiliser"></div><p id="sourceSelectionCount"></p><small>Si le preset contient moins de vignettes que votre sélection, les premières sources sont utilisées et les layers en trop sont désactivés.</small></div></section></section>
+        </section>
         <section class="studio-view" id="view-layers" role="tabpanel" aria-labelledby="tab-layers" hidden><div class="section-intro"><h2>Sources & habillage des layers</h2><p>Choisissez une vignette pour changer sa source, son texte, son tally ou son vumètre.</p></div>
         <section class="studio-card html-source-card" id="htmlLayerCard" aria-labelledby="htmlSourceTitle"><div class="html-source-heading"><span class="layer-number">10</span><div><h3 id="htmlSourceTitle">Source HTML du multiview</h3><p id="htmlSourceParent"></p></div><span id="htmlSourceStatus" class="html-source-status"></span></div><div class="html-source-binding"><strong id="htmlSourceInput"></strong><code id="htmlSourceID"></code><p>Habillage en plein écran, au-dessus des vignettes. Ce layer reste réservé à la page web de cet écran.</p></div><div class="html-source-actions"><button id="repairHTML" type="button" class="primary-button" hidden>Créer la source HTML</button><button id="refreshHTMLPage" type="button" hidden>Actualiser dans vMix</button><a id="openHTMLSource" target="_blank" rel="noopener">Ouvrir la page HTML</a></div></section>
-        <div class="layer-workspace"><section class="studio-card layers-card"><h2>Vignettes de cet écran</h2><div id="layerList" class="layer-list"></div><details id="inactiveLayers" class="inactive-layers" hidden><summary id="inactiveLayersSummary">Layers désactivés</summary><div id="inactiveLayerList" class="layer-list"></div></details></section><div id="layerEditor"></div></div><section class="studio-card" id="sourceStructure"><div class="section-intro"><h2>Entrées du multiview</h2><p>Les regroupements sont parcourus automatiquement. Les entrées navigateur sont exclues des vignettes.</p></div><div id="sourceSettingsSlot"></div><details class="managed-details"><summary>Identifiants vMix conservés</summary><p id="managedInputsInfo"></p></details></section></section>
+        <div class="layer-workspace"><section class="studio-card layers-card"><h2>Vignettes de cet écran</h2><div id="layerList" class="layer-list"></div><details id="inactiveLayers" class="inactive-layers" hidden><summary id="inactiveLayersSummary">Layers désactivés</summary><div id="inactiveLayerList" class="layer-list"></div></details></section><div id="layerEditor"></div></div></section>
         <section class="studio-view" id="view-options" role="tabpanel" aria-labelledby="tab-options" hidden><div class="section-intro"><h2>Horloge & informations</h2><p>Réglez les informations supplémentaires pour cet écran.</p></div><div id="extraSettingsSlot"></div></section>
         <section class="studio-view" id="view-connection" role="tabpanel" aria-labelledby="tab-connection" hidden><section class="studio-card connection"><div class="section-intro"><h2>Connexion & écrans</h2><p>Ces réglages sont associés au PC de la régie.</p></div><div class="field-grid">
         <label class="field">Identifiant de ce PC<input id="pcName" maxlength="80"><small>Un nom pour retrouver cette configuration.</small></label><label class="field">Adresse vMix<input id="vmixHost" placeholder="127.0.0.1"><small>127.0.0.1 si vMix fonctionne sur ce PC.</small></label>
         <label class="field">Port API<input id="vmixPort" type="number" min="1" max="65535"></label><label class="field">Nombre d’écrans<input id="screenCount" type="number" min="1" max="${M.MAX_SCREENS}" step="1"><small>Ouvrez une page web par écran.</small></label></div><button id="saveConnection" type="button" class="primary-button">Enregistrer la connexion</button>
         <details class="help-details"><summary>Démarrage et synchronisation</summary><p id="syncHelp">Lancez le compagnon OpenMultiview sur le PC vMix pour synchroniser les pages web. Sans compagnon, conservez les URL de rappel et utilisez le même profil navigateur.</p></details></section></section>
-        <section class="studio-view" id="view-recall" role="tabpanel" aria-labelledby="tab-recall" hidden><section class="studio-card"><div class="section-intro"><h2>Modèles personnalisés</h2><p>Mémorisez la disposition, les sources et l’habillage de tous vos écrans.</p></div><div class="preset-actions"><label class="field">Nom du modèle<input id="presetName" placeholder="Ex. Régie conférence" aria-label="Nom du modèle"></label><button id="savePreset" type="button" class="primary-button">Mémoriser les écrans</button></div><div class="preset-actions preset-recall"><label class="field">Modèles enregistrés<select id="savedPresets" aria-label="Modèles enregistrés"></select></label><button id="recallPreset" type="button">Rappeler</button><button id="deletePreset" type="button" class="danger-button">Supprimer</button></div></section>
+        <section class="studio-view" id="view-recall" role="tabpanel" aria-labelledby="tab-recall" hidden><section class="studio-card"><div class="section-intro"><h2>Modèles personnalisés</h2><p>Mémorisez la disposition, les sources et l’habillage de tous vos écrans. Les modèles sont enregistrés dans ce navigateur, pour ce PC.</p></div><div class="preset-actions"><label class="field">Nom du modèle<input id="presetName" placeholder="Ex. Régie conférence" aria-label="Nom du modèle"></label><button id="savePreset" type="button" class="primary-button">Mémoriser les écrans</button></div><div class="preset-actions preset-recall"><label class="field">Modèles enregistrés<select id="savedPresets" aria-label="Modèles enregistrés"></select></label><button id="recallPreset" type="button">Rappeler</button><button id="deletePreset" type="button" class="danger-button">Supprimer</button></div></section>
         <section class="studio-card"><div class="section-intro"><h2>Positions personnalisées</h2><p>Après un ajustement dans vMix, mémorisez les positions de l’écran sélectionné.</p></div><div class="position-actions"><button id="captureLayout" type="button">Mémoriser les positions vMix actuelles</button><button id="applyLayout" type="button">Appliquer les positions mémorisées dans vMix</button></div></section>
         <section class="studio-card"><div class="section-intro"><h2>URL de rappel</h2><p>Copiez chaque URL dans sa source HTML vMix, placée au layer 10 de l’entrée principale de cet écran. Enregistrez aussi le preset vMix pour conserver les vidéos et leurs IDs.</p></div><div id="screenLinks"></div></section></section>
         </main><aside class="workspace-aside"><section class="studio-card preview-card"><div><h2 id="previewHeading">Plan des layers</h2><p>Cliquez une vignette pour la configurer.</p></div><div id="layoutPreview"></div></section><section class="studio-card"><h2>Pages multiview</h2><p id="htmlLayerInfo" class="source-help"></p><div id="displayConnections" class="display-connections"></div></section></aside></div>
     `);
     extraSettings.appendTo('#extraSettingsSlot');
-    sourceSettings.appendTo('#sourceSettingsSlot');
     panel.appendTo('#layerEditor');
     [['pcName', 'Identifiant de ce PC'], ['vmixHost', 'Adresse vMix'], ['screenCount', 'Nombre d’écrans']].forEach(([id, label]) => {
         $('#' + id).attr({'aria-label': label, 'aria-describedby': id + 'Help'}).parent().find('small').attr('id', id + 'Help');
@@ -389,7 +417,6 @@
         const labels = {Sources: 'Sources & layers', Clock: 'Horloge', Status: 'État vMix', 'Count-down': 'Décompte'};
         $(this).text(labels[$(this).text()] || $(this).text());
     });
-    sourceSettings.append('<p class="source-help">Ajoutez seulement les entrées qui composent cet écran. Leurs IDs sont conservés.</p>');
     panel.find('#tileLayerSelect').attr({hidden: true, 'aria-hidden': 'true', tabindex: -1});
     panel.find('.tileSettingsTitle').append('<h2 id="layerEditorTitle">Layer à configurer</h2>');
     panel.find('.tileSettingsTitle').after('<div id="layerDetails" class="layer-details"></div>');
@@ -487,14 +514,6 @@
         showView(event.key === 'Home' ? viewNames[0] : event.key === 'End' ? viewNames.at(-1) : viewNames[(n + (event.key === 'ArrowRight' ? 1 : -1) + viewNames.length) % viewNames.length], true, true);
     });
     showView(read(key(state.pc) + '.view') || 'layouts');
-    const oldSources = renderSourceInputs;
-    renderSourceInputs = function() {
-        oldSources();
-        $('#sourceInputsList .sourceInputRow').each(function(n) {
-            const input = M.resolveSource(vMixInputs, vMixSettings.multiViewInputs[n]);
-            if(input) $('<div class="source-input-detail">').append($('<span>').text(input.title), $('<code>').text('ID vMix : ' + input.key)).appendTo(this);
-        });
-    };
     extraSettings.find('.settingGroup').each(function() {
         const prefix = $(this).find('input[id$="Enable"]').attr('id').replace(/Enable$/, '');
         ['Zoom', 'PanX', 'PanY'].forEach(prop => {
@@ -507,7 +526,6 @@
         $('#' + id).parent().append(document.createTextNode(label));
     });
     let layerListSignature;
-    let sourceChoicesSignature;
     let controlLayersSignature;
     let gallerySpacing;
     function renderTemplatePreviews(spacing) {
@@ -637,18 +655,12 @@
             if(settings.enabled && settings.roleBadge && monitorRole) button.append($('<i class="preview-role">').text(monitorRole === 'PGM' ? 'PROGRAM' : 'PREVIEW'));
         });
     }
-    function renderBuilderSources() {
-        if(!control || !$('#buildSources').length || screenIndex >= state.screens.length) return;
+    function renderScreenControls() {
+        if(!control || screenIndex >= state.screens.length) return;
         const s = state.screens[screenIndex];
-        const chosen = s.videoInputs || [];
         renderTemplatePreviews(M.spacingFor(s));
         if(!$('#presetSpacing, #presetSpacingSlider').is(':focus')) $('#presetSpacing, #presetSpacingSlider').val(M.spacingFor(s));
         $('#applySpacing').prop('disabled', !s.managed || !s.layout.length || building || applying);
-        const select = $('#buildSources').empty();
-        const candidates = B.candidates(vMixInputs, s);
-        candidates.forEach(input => select.append(new Option('Entrée ' + input.number + ' · ' + (input.title || input.key), input.key, false, chosen.includes(input.key))));
-        chosen.filter(k => !vMixInputs.some(i => i.key === k)).forEach(k => select.append(new Option('Source introuvable · ' + k, k, true, true)));
-        $('#managedInputsInfo').text(s.managed ? 'ID du multiview : ' + s.managed.root + ' · ' + s.managed.sources.length + ' vignettes · Source HTML au layer 10 : ' + (s.managed.browser || 'À créer') : 'Les entrées nécessaires seront créées au choix d’un preset.');
         const htmlParent = s.managed && M.resolveSource(vMixInputs, s.managed.root);
         const htmlBrowser = s.managed && M.resolveSource(vMixInputs, s.managed.browser);
         const htmlReady = htmlParent && htmlBrowser && M.isBrowser(htmlBrowser) && !B.browserNeedsRepair(s, vMixInputs);
@@ -665,39 +677,7 @@
         $('#refreshHTMLPage').prop('hidden', !s.managed || htmlMissing).prop('disabled', !htmlParent || building || applying);
         $('#screenContext').text(state.pc + ' · ' + state.screens.length + (state.screens.length > 1 ? ' écrans' : ' écran') + (s.managed ? ' · ' + s.managed.sources.length + ' vignettes' : ' · À configurer'));
         $('.layout-choice').each(function() { $(this).attr('aria-pressed', String(!!s.managed && s.managed.template === this.dataset.template)); });
-        const term = ($('#sourceSearch').val() || '').trim().toLocaleLowerCase();
-        const signature = JSON.stringify([screenIndex, term, candidates.map(i => [i.key, i.number, i.title])]);
-        if(signature !== sourceChoicesSignature) {
-            sourceChoicesSignature = signature;
-            const choices = $('#sourceChoices').empty();
-            const visible = candidates.filter(i => (i.number + ' ' + i.title + ' ' + i.key).toLocaleLowerCase().includes(term));
-            visible.forEach(input => $('<label class="source-choice">').append($('<input type="checkbox">').attr({'data-video-key': input.key, 'aria-label': 'Utiliser ' + input.title}), $('<span>').append($('<strong>').text(input.title || input.key), $('<small>').text('Entrée ' + input.number))).appendTo(choices));
-            if(!visible.length) choices.append($('<p class="empty-message">').text(candidates.length ? 'Aucune source ne correspond à votre recherche.' : 'Connectez vMix pour afficher les sources vidéo.'));
-        }
-        $('#sourceChoices [data-video-key]').each(function() { this.checked = chosen.includes(this.dataset.videoKey); this.disabled = building; });
-        const count = new Set(chosen).size;
-        $('#sourceSelectionCount').text(count ? count + (count > 1 ? ' sources sélectionnées' : ' source sélectionnée') : 'Affectation automatique · ' + candidates.length + (candidates.length > 1 ? ' sources disponibles' : ' source disponible'));
-        $('#selectAllSources').prop('disabled', !candidates.length || building);
     }
-    $('#sourceSearch').on('input', renderBuilderSources);
-    $('#sourceChoices').on('change', '[data-video-key]', function() {
-        const chosen = new Set(state.screens[screenIndex].videoInputs || []);
-        if(this.checked) chosen.add(this.dataset.videoKey); else chosen.delete(this.dataset.videoKey);
-        $('#buildSources').val([...chosen]).trigger('change');
-    });
-    $('#selectAllSources').on('click', () => {
-        const chosen = new Set(state.screens[screenIndex].videoInputs || []);
-        $('#sourceChoices [data-video-key]').each(function() { chosen.add(this.dataset.videoKey); });
-        $('#buildSources').val([...chosen]).trigger('change');
-    });
-    $('#buildSources').on('change', function() {
-        state.screens[screenIndex].videoInputs = $(this).val() || [];
-        state.updated = M.nextUpdate(state.updated); persist(); links(); renderBuilderSources();
-    });
-    $('#autoAssignSources').on('click', function() {
-        delete state.screens[screenIndex].videoInputs;
-        state.updated = M.nextUpdate(state.updated); persist(); links(); renderBuilderSources();
-    });
     $('#presetSpacingSlider').on('input', function() { $('#presetSpacing').val(this.value); });
     $('#presetSpacing, #presetSpacingSlider').on('change', function() {
         const value = Number(this.value);
@@ -749,7 +729,10 @@
     }
     async function command(functionName, parameters) {
         const query = new URLSearchParams({Function: functionName, ...parameters});
-        const response = await fetchWithTimeout('http://' + state.host + ':' + state.port + '/api/?' + query);
+        if(functionName === 'BrowserNavigate' && query.toString().length > 7000) throw new Error('URL trop longue pour vMix. Lancez start-openmultiview.cmd sur le PC vMix pour utiliser une URL courte et conserver les réglages.');
+        let response;
+        try { response = await fetchWithTimeout('http://' + state.host + ':' + state.port + '/api/?' + query); }
+        catch(error) { throw new Error('Impossible de joindre vMix pour ' + functionName + '. Vérifiez son API HTTP, le port ' + state.port + ' et l’autorisation d’accès au réseau local.'); }
         if(!response.ok) throw new Error('vMix a refusé ' + functionName + ' (' + response.status + '). Relancez la construction après vérification.');
     }
     const htmlRepairKey = s => [state.pc, state.host, state.port, s.managed.root, s.managed.browser].join('|');
@@ -766,9 +749,8 @@
                         displayURL: () => browserURL(index), save: async next => {
                             state.screens[index] = next;
                             if(automatic) htmlRepairAttempts.add(htmlRepairKey(next));
-                            state.updated = M.nextUpdate(state.updated); persist(); links(); renderBuilderSources();
+                            state.updated = M.nextUpdate(state.updated); persist(); links(); renderScreenControls();
                         }});
-                    if(!automatic) await command('BrowserReload', {Input: state.screens[index].managed.browser});
                     state.updated = M.nextUpdate(state.updated); persist(); links();
                 } catch(error) { failures.push('Écran ' + (index + 1) + ' : ' + error.message); }
             }
@@ -787,7 +769,7 @@
     async function buildTemplates(targets, restore = {}) {
         if(building || applying) return false;
         publish();
-        // Verify source availability for every target before creating an input.
+        // Refresh the source list before creating inputs; missing slots stay empty.
         try {
             const inputs = await readLiveInputs();
             targets.forEach(({index, template}) => B.selectSources(inputs, state.screens[index], template));
@@ -851,7 +833,11 @@
             $('.config-page input, .config-page select, .config-page button').prop('disabled', false);
             loadScreen();
         }
-        if(success) notice('Disposition appliquée dans vMix. Enregistrez votre preset vMix pour conserver les entrées et leurs IDs.');
+        if(success) {
+            const missing = [...new Set(targets.flatMap(({index, template}) => template.slots.filter((slot, n) => ['PGM', 'PVW'].includes(slot.label) && !state.screens[index].managed.sources[n]).map(slot => slot.label)))];
+            notice('Disposition appliquée dans vMix. Enregistrez votre preset vMix pour conserver les entrées et leurs IDs.' +
+                (missing.length ? ' Cases réservées à ' + missing.join(' / ') + ' laissées vides : ajoutez les entrées Preview / Output dans vMix, puis réappliquez ce preset pour les affecter.' : ''));
+        }
         return success;
     }
     async function applyLayerSources() {
@@ -929,6 +915,7 @@
             try {
                 if(t.screens && state.screens.length < 2) throw new Error('Activez au moins 2 écrans et choisissez des entrées multiview distinctes.');
                 const targets = t.screens ? [0, 1] : [screenIndex];
+                targets.forEach(index => { delete state.screens[index].videoInputs; });
                 await buildTemplates(targets.map((index, i) => ({index, template: t.screens ? M.templates.find(x => x.id === t.screens[i]) : t})));
             } catch(error) { notice(error.message); }
         }).appendTo('#layoutGallery');
@@ -1024,7 +1011,7 @@
         oldVmixRefresh(data);
         // New inputs must appear in the picker even when existing layers stay
         // unchanged. The picker keeps its DOM when its source list is stable.
-        renderBuilderSources();
+        renderScreenControls();
         const signature = JSON.stringify([screenIndex, vMixSettings.previewKey, vMixSettings.programKey, editableLayers(), vMixInputs.map(i => [i.key, i.number, i.title, i.type])]);
         if(signature !== controlLayersSignature) {
             controlLayersSignature = signature;

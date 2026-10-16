@@ -344,3 +344,30 @@ test('role labels can be hidden for the PC while one layer remains visible, incl
         assert.equal(view.scope.tileSettingsClasses({layerKey:'new-layer',inputKey:'preview'}).includes('roleBadgeOff'),true);
     }
 });
+
+test('compressed browser URLs restore Unicode settings in a fresh viewer without the companion', () => {
+    const config = {version: 1, pc: 'regie', host: '127.0.0.1', port: '8088', updated: 10, screens: [M.screen(['root']), {...M.screen(['second']), extras: oldExtras, tiles: oldMasks}], textStyle: {titlePosition: 'above', titleBackground: true, titleFontSize: 24}};
+    config.screens[1].tiles.push({key: 'écran 🎥 + test', value: {enabled: false}});
+    const href = M.browserRecallURL('https://vincentberry.github.io/openmultiview/config.html', config, 1, 'es');
+    const decoded = M.unpack(JSON.parse(M.urlParameters(href).get('Config')));
+    assert.deepEqual(decoded.screens[1], M.unpack(M.pack(config)).screens[1]);
+    assert.equal(M.urlParameters(href).get('Screen'), '2');
+    assert.equal(M.urlParameters(href).get('Lang'), 'es');
+    const view = viewer(href, {studio: true});
+    assert.deepEqual(M.clone(view.scope.vMixSettings.multiViewInputs), ['second']);
+    assert.equal(view.scope.mySettingMask.find(t => t.key === 'écran 🎥 + test').value.enabled, false);
+});
+
+test('compressed browser URLs keep a realistic 16-source navigation request within the vMix limit', async () => {
+    const B = require('../multiview-builder');
+    const {fakeVmix} = require('./helpers/fake-vmix.cjs');
+    const api = fakeVmix();
+    api.inputs.forEach((i, n) => i.key = '00000000-0000-4000-8000-' + String(n).padStart(12, '0'));
+    const result = await B.build({screen: M.screen(), template: M.templates.find(t => t.id === 'sixteen'), pc: 'regie', index: 0, readInputs: api.readInputs, command: api.command, save: async () => {}, displayURL: () => 'about:blank'});
+    const screen = {...M.screen(result.inputs), managed: result.managed, layout: result.layout, extras: oldExtras, tiles: result.layers.map(l => ({key: M.layerKey(l.sourceKey, l.layerNumber - 1), value: {...M.tileDefaultsFor('openmultiview'), borderWidth: 5}}))};
+    const config = {version: 1, pc: 'regie', host: '127.0.0.1', port: '8088', updated: 10, screens: [screen]};
+    const href = M.browserRecallURL('https://vincentberry.github.io/openmultiview/', config, 0);
+    assert.ok(new URLSearchParams({Function: 'BrowserNavigate', Input: second, Value: href}).toString().length < 7000);
+    assert.deepEqual(M.unpack(JSON.parse(M.urlParameters(href).get('Config'))), M.unpack(M.pack(config)));
+    assert.throws(() => M.urlParameters('http://localhost/#ConfigZ=BAD!'), /invalide/);
+});

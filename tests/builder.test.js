@@ -414,15 +414,21 @@ test('a lost AddInput reply is recovered from XML without a duplicate input', as
     assert.equal(api.calls.filter(c => c.name === 'AddInput').length, 2);
 });
 
-test('a reusable multiview keeps its ID; incomplete source selection creates no input', async () => {
+test('a reusable multiview keeps its ID; incomplete source selection leaves editable blank slots', async () => {
     const api = fakeVmix(4);
     api.inputs.push({key: 'original-root', number: 5, title: 'Original MV', type: 'Colour', layers: [{index: 0, inputKey: 'camera-1'}]});
     const result = await B.build({...options(api, M.screen(['original-root']), 'quad'), reusableRoot: 'original-root'});
     assert.equal(result.managed.root, 'original-root');
     assert.equal(api.calls.filter(c => c.name === 'AddInput').length, 1);
-    const before = api.calls.length;
-    await assert.rejects(B.build(options(api, {...M.screen(), videoInputs: ['camera-1']}, 'quad')), /Sélectionnez 4/);
-    assert.equal(api.calls.length, before);
+    const partial = await B.build(options(api, {...M.screen(), videoInputs: ['camera-1']}, 'quad'));
+    assert.deepEqual(partial.managed.sources, ['camera-1', null, null, null]);
+    const screen = {...M.screen(partial.inputs), managed: partial.managed, layout: partial.layout};
+    assert.equal(M.collectLayers(api.inputs, screen.inputs, M.activeLayersFor(screen, api.inputs), screen.layout).layers.length, 1);
+    const slots = M.configurableLayers(screen, api.inputs);
+    assert.equal(slots.length, 4);
+    assert.equal(slots.filter(l => l.disabled).length, 3);
+    const filled = await B.assignLayer({screen, layer: slots[3], sourceKey: 'camera-4', readInputs: api.readInputs, command: api.command});
+    assert.equal(filled.managed.sources[3], 'camera-4');
 });
 
 test('only a missing input is recreated; custom positions rebind to its new ID', async () => {
@@ -559,4 +565,28 @@ test('manual multiview assignments preserve legacy positions and exclude only di
     const snapshot = M.clone(next);
     await assert.rejects(B.assignLayer({screen: next, layer: {sourceKey: 'old-root', layerNumber: 1}, sourceKey: 'camera-2', readInputs: api.readInputs, command: api.command}), /Interruption/);
     assert.deepEqual(next, snapshot);
+});
+
+test('large presets use the first available sources and leave every other slot editable and empty', async () => {
+    for(const count of [0, 1, 3]) {
+        const api = fakeVmix(count);
+        const result = await B.build(options(api, M.screen(), 'sixteen'));
+        const screen = {...M.screen(result.inputs), managed: result.managed, layout: result.layout};
+        assert.equal(result.managed.sources.length, 16);
+        assert.equal(result.managed.sources.filter(Boolean).length, count);
+        assert.equal(M.configurableLayers(screen, api.inputs).filter(l => l.disabled).length, 16 - count);
+        assert.equal(M.collectLayers(api.inputs, screen.inputs, M.activeLayersFor(screen, api.inputs), screen.layout).layers.length, count);
+        assert.deepEqual(M.unpack(M.pack({version: 1, pc: 'test', host: '127.0.0.1', port: '8088', updated: 1, screens: [screen]})).screens[0].managed.sources, result.managed.sources);
+    }
+});
+
+test('missing Preview and Program keep their reserved slots and are picked up on the next application', async () => {
+    const api = fakeVmix(3);
+    api.inputs.forEach((i, n) => i.title = 'Camera ' + (n + 1));
+    const first = await B.build(options(api, M.screen(), 'preset-1'));
+    assert.deepEqual(first.managed.sources.slice(0, 5), [null, null, 'camera-1', 'camera-2', 'camera-3']);
+    api.inputs.push({key: 'preview', number: 40, title: 'Preview', type: 'Preview', layers: []}, {key: 'program', number: 41, title: 'Output', type: 'Output', layers: []});
+    const second = await B.build(options(api, {...M.screen(first.inputs), managed: first.managed, layout: first.layout}, 'preset-1'));
+    assert.deepEqual(second.managed.sources.slice(0, 5), ['preview', 'program', 'camera-1', 'camera-2', 'camera-3']);
+    assert.equal(second.managed.root, first.managed.root);
 });

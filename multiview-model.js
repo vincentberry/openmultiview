@@ -82,6 +82,7 @@
         return ref;
     }
     function resolveSource(inputs, ref) {
+        if(ref == null) return undefined;
         if(typeof ref === 'string') return inputs.find(i => i.key === ref.replace(/^key:/, '')) || (/^\d+$/.test(ref) ? inputs.find(i => i.number === Number(ref)) : undefined);
         return inputs.find(i => i.number === ref + 1);
     }
@@ -94,6 +95,7 @@
         return !!input && /^(Colour|Color)$/i.test(input.type || '') && /^MV · .+ · Écran \d+ · (Multiview|Vignettes \d+)$/.test(input.title || '');
     }
     function role(input) {
+        if(!input) return '';
         const label = [input.title, input.shortTitle].join(' ');
         if(/\b(pgm|program|programme|output)\b/i.test(label)) return 'PGM';
         if(/\b(pvw|prv|preview)\b/i.test(label)) return 'PVW';
@@ -207,7 +209,7 @@
         if(managed && managed.root && Array.isArray(managed.sources)) {
             [managed.root, ...managed.parts].filter(Boolean).forEach(key => active[key] = []);
             const grouped = managed.sources.length > 9;
-            videoLayersFor(managed).forEach(l => active[l.sourceKey].push(l.layerNumber));
+            videoLayersFor(managed).filter(l => l.inputKey).forEach(l => active[l.sourceKey].push(l.layerNumber));
             if(grouped) active[managed.root] = managed.parts.slice(0, Math.ceil(managed.sources.length / 10)).map((_, n) => n + 1);
             if(managed.browser) active[managed.root].push(HTML_LAYER);
         }
@@ -231,7 +233,7 @@
         const planned = videoLayersFor(screen.managed);
         const template = screen.managed && templates.find(t => t.id === screen.managed.template && t.slots);
         if(!template || planned.length !== template.slots.length) return screen.layout;
-        const base = positions(template.slots, planned.map(l => ({...l, role: (resolveSource(inputs, l.inputKey) || {}).title ? role(resolveSource(inputs, l.inputKey)) : ''})), spacingFor(screen));
+        const base = positions(template.slots, planned.map((l, n) => ({...l, role: l.inputKey ? role(resolveSource(inputs, l.inputKey)) : template.slots[n].label})), spacingFor(screen));
         const savedFor = p => screen.layout.find(s => (s.source === p.source || s.source === (resolveSource(inputs, p.source) || {}).number) && s.layer === p.layer);
         return [...base.map(p => savedFor(p) || p), ...screen.layout.filter(p => !base.some(b => (b.source === p.source || (resolveSource(inputs, b.source) || {}).number === p.source) && b.layer === p.layer))];
     }
@@ -251,7 +253,7 @@
             const row = (screen.layerSources || []).find(r => r.parent === parent.key && r.layer === slot.layer);
             const current = (parent.layers || []).find((l, n) => layerNumber(l.index, n) === slot.layer);
             const expected = planned.find(l => l.sourceKey === parent.key && l.layerNumber === slot.layer);
-            const inputKey = row && row.source !== null ? row.source : current && current.inputKey || expected && expected.inputKey;
+            const inputKey = row ? row.source : expected && expected.inputKey === null ? null : current && current.inputKey || expected && expected.inputKey;
             const input = resolveSource(inputs, inputKey);
             if(isBrowser(input) || screen.managed && screen.managed.parts.includes(inputKey)) return;
             const saved = layout.find(p => (p.source === parent.key || p.source === parent.number) && p.layer === slot.layer);
@@ -395,12 +397,54 @@
         return 'legacy-' + [a, b].map(n => (n >>> 0).toString(16).padStart(8, '0')).join('');
     }
     const MAX_REQUEST_TARGET = 1800;
+    // A small LZW dictionary keeps portable browser URLs below vMix's API
+    // request limit, without depending on a running local companion.
+    const urlAlphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    function compressConfig(value) {
+        const text = unescape(encodeURIComponent(JSON.stringify(value)));
+        const dictionary = new Map(Array.from({length: 256}, (_, n) => [String.fromCharCode(n), n]));
+        let word = '', result = '';
+        const emit = code => { result += urlAlphabet[code >> 6] + urlAlphabet[code & 63]; };
+        for(const char of text) {
+            if(dictionary.has(word + char)) word += char;
+            else {
+                emit(dictionary.get(word));
+                if(dictionary.size < 4096) dictionary.set(word + char, dictionary.size);
+                word = char;
+            }
+        }
+        if(word) emit(dictionary.get(word));
+        return result;
+    }
+    function decompressConfig(value) {
+        if(value.length % 2 || value.length > 200000 || /[^A-Za-z0-9_-]/.test(value)) throw new Error('Configuration compressée invalide');
+        const dictionary = Array.from({length: 256}, (_, n) => String.fromCharCode(n));
+        let word = '', result = '';
+        for(let n = 0; n < value.length; n += 2) {
+            const code = urlAlphabet.indexOf(value[n]) * 64 + urlAlphabet.indexOf(value[n + 1]);
+            const entry = dictionary[code] ?? (code === dictionary.length && word ? word + word[0] : null);
+            if(entry === null) throw new Error('Configuration compressée invalide');
+            result += entry;
+            if(result.length > 1024 * 1024) throw new Error('Configuration trop volumineuse');
+            if(word && dictionary.length < 4096) dictionary.push(word + entry[0]);
+            word = entry;
+        }
+        return JSON.parse(decodeURIComponent(escape(result)));
+    }
+    function browserRecallURL(href, config, index, language) {
+        const target = new URL('index.html', href);
+        target.search = 'Screen=' + (index + 1) + (['en', 'es'].includes(language) ? '&Lang=' + language : '');
+        const snapshot = {...config, screens: config.screens.map((s, n) => n === index ? s : screen())};
+        target.hash = 'ConfigZ=' + compressConfig(pack(snapshot));
+        return target.href;
+    }
     function urlParameters(href) {
         const url = new URL(href);
         const parameters = new URLSearchParams(url.search);
         // A normal section anchor is not a configuration. Fragment values win
         // when a portable link also carries a small routing query.
         if(url.hash.includes('=')) for(const [name, value] of new URLSearchParams(url.hash.replace(/^#\??/, ''))) parameters.set(name, value);
+        if(parameters.has('ConfigZ')) parameters.set('Config', JSON.stringify(decompressConfig(parameters.get('ConfigZ'))));
         return parameters;
     }
     function safeURL(href) {
@@ -475,7 +519,7 @@
         target.search = 'Inputs=' + sourceList + '&' + parameters.map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
         return safeURL(target.href);
     }
-    const api = {clone, screen, validate, templates, templateFrames, positions, resizeSpacing, spacingFor, DEFAULT_SPACING, LEGACY_SPACING, pack, unpack, legacyPC, recallURL, safeURL, urlParameters, MAX_REQUEST_TARGET, layerNumber, MAX_SCREENS, HTML_LAYER, themes, themeFor, tileDefaultsFor, changeTheme, textStyleFor, applyTextStyle, tallyState, applyRoleBadges,
+    const api = {clone, screen, validate, templates, templateFrames, positions, resizeSpacing, spacingFor, DEFAULT_SPACING, LEGACY_SPACING, pack, unpack, legacyPC, recallURL, browserRecallURL, safeURL, urlParameters, MAX_REQUEST_TARGET, layerNumber, MAX_SCREENS, HTML_LAYER, themes, themeFor, tileDefaultsFor, changeTheme, textStyleFor, applyTextStyle, tallyState, applyRoleBadges,
         parseSourceReference, resolveSource, isBrowser, isGeneratedMultiview, collectLayers, role, audioRoute, audioLevels, nextUpdate, isLoopbackURL, syncBases, PUBLIC_ORIGINS,
         compose, localPosition, migrateTileSettings, layerKey, activeLayersFor, videoLayersFor, layoutFor, configurableLayers};
     if (typeof module !== 'undefined') module.exports = api;
