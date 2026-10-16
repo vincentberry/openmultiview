@@ -4,10 +4,14 @@ var sourceParameters = MultiviewModel.urlParameters(window.location.href);
 function escapeHTML(value) {
     return String(value == null ? "" : value).replace(/[&<>"']/g, function(c) { return {"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[c]; });
 }
-function fetchWithTimeout(url, options = {}, timeout = 5000) {
+var localNetwork = typeof MultiviewConnection === 'undefined' ? null : MultiviewConnection.createAccess({href: window.location.href,
+    navigator: typeof navigator === 'undefined' ? null : navigator,
+    changed: function() { if(window.dispatchEvent && typeof CustomEvent !== 'undefined') window.dispatchEvent(new CustomEvent('openmultiview-network')); }});
+async function fetchWithTimeout(url, options = {}, timeout = 5000) {
+    if(localNetwork) { await localNetwork.ready; localNetwork.assertAllowed(url); }
     var controller = new AbortController();
     var timer = setTimeout(function(){ controller.abort(); }, timeout);
-    return fetch(url, Object.assign({}, options, {signal: controller.signal})).finally(function(){ clearTimeout(timer); });
+    return fetch(url, Object.assign({}, localNetwork ? localNetwork.options(url) : {}, options, {signal: controller.signal})).finally(function(){ clearTimeout(timer); });
 }
 
 var vMixSettings = {
@@ -68,7 +72,7 @@ var extras = [
         fontSize: 70,
         template: function(obj){
             var templateString = `
-            <div class="multiViewBox" onclick="Mask(this)" style="
+            <div class="multiViewBox" style="
                 height: ${obj.zoomY}%;
                 width:  ${obj.zoomX}%;
                 left:   ${((obj.panX)/2) + 50}%;
@@ -92,7 +96,7 @@ var extras = [
         fontSize: 70,
         template: function(obj){
             var templateString = `
-            <div class="multiViewBox" onclick="Mask(this)" style="
+            <div class="multiViewBox" style="
                 height: ${obj.zoomY}%;
                 width:  ${obj.zoomX}%;
                 left:   ${((obj.panX)/2) + 50}%;
@@ -116,7 +120,7 @@ var extras = [
         fontSize: 36,
         template: function(obj){
             var templateString = `
-            <div class="multiViewBox" onclick="Mask(this)" style="
+            <div class="multiViewBox" style="
                 height: ${obj.zoomY}%;
                 width:  ${obj.zoomX}%;
                 left:   ${((obj.panX)/2) + 50}%;
@@ -188,20 +192,31 @@ if(vMixSettings.multiViewInputs.length == 0){
 if(sourceParameters.has("IP")) vMixSettings.IP = sourceParameters.get("IP");
 if(sourceParameters.has("Port")) vMixSettings.port = sourceParameters.get("Port");
 var pollPending = false;
-setInterval(() => {
-    if(pollPending) return;
+var vmixConnection = {state: 'checking', message: '', nextAttempt: 0, failures: 0};
+function connectionChanged() { if(window.dispatchEvent && typeof CustomEvent !== 'undefined') window.dispatchEvent(new CustomEvent('openmultiview-connection')); }
+async function pollVmix(force = false) {
+    if(pollPending || !force && Date.now() < vmixConnection.nextAttempt) return;
     pollPending = true;
-    fetchWithTimeout('http://' + vMixSettings.IP + ':' + vMixSettings.port + '/api', {}, 3000)
-    .then(response => { if(!response.ok) throw new Error("API vMix indisponible"); return response.text(); })
-    .then(str => (new window.DOMParser()).parseFromString(str, "text/xml"))
-    .then(data => vMixRefresh(data))
-    .catch(function(){
+    try {
+        const response = await fetchWithTimeout('http://' + vMixSettings.IP + ':' + vMixSettings.port + '/api', {}, 3000);
+        if(!response.ok) throw new Error('API vMix : HTTP ' + response.status);
+        const data = new window.DOMParser().parseFromString(await response.text(), 'text/xml');
+        if(!data.querySelector('vmix') || data.querySelector('parsererror')) throw new Error('La réponse reçue n’est pas une API vMix.');
+        vMixRefresh(data);
+        Object.assign(vmixConnection, {state: 'connected', message: 'vMix connecté', nextAttempt: 0, failures: 0});
+    } catch(error) {
         vMixSettings.lastApiSuccess = 0;
-        $(".warning").text("Connexion vMix indisponible. Vérifiez l’adresse et le port API dans Configuration.");
+        vmixConnection.failures++;
+        vmixConnection.state = error.code === 'LOCAL_NETWORK_ACCESS' ? error.permission === 'denied' ? 'denied' : 'permission' : 'unreachable';
+        vmixConnection.message = error.code === 'LOCAL_NETWORK_ACCESS' ? error.message : location.protocol === 'https:' ?
+            'vMix est inaccessible depuis cette page. Vérifiez son API et l’autorisation d’accès aux applications de cet appareil dans les paramètres du site. Vous pouvez aussi ouvrir la configuration locale du compagnon.' :
+            'Connexion vMix indisponible. Vérifiez l’adresse et le port API dans Configuration.';
+        vmixConnection.nextAttempt = Date.now() + (error.code === 'LOCAL_NETWORK_ACCESS' ? 30000 : Math.min(30000, vmixConnection.failures * 3000));
+        $(".warning").text(vmixConnection.message);
         $(".warning").css("display", "flex");
-    }).finally(function(){ pollPending = false; });
-
-}, vMixSettings.refreshInterval);
+    } finally { pollPending = false; connectionChanged(); }
+}
+setInterval(pollVmix, vMixSettings.refreshInterval);
 
 var overlayArray = [];
 var multiViewOverlays = [];
@@ -468,6 +483,10 @@ function vMixRefresh(data){
     updateVU();
     updateLayerTimers();
     vMixSettings.lastApiSuccess = Date.now();
+    if(typeof vmixConnection !== 'undefined') {
+        Object.assign(vmixConnection, {state: 'connected', message: 'vMix connecté', nextAttempt: 0, failures: 0});
+        connectionChanged();
+    }
 }
 
 function updateVU(){
@@ -784,7 +803,7 @@ function refresh(){
     $(".outerContainer").attr("data-theme", vMixSettings.theme || "classic").html("")
     multiViewOverlays.forEach(overlay => {
         var inputIndex = vMixInputs.findIndex(vMixInput => vMixInput.key === overlay.inputKey);
-        var layerConfigHandlers = isLayerConfigIgnored(overlay) ? "" : `onclick="return openLayerContextMenu(event, this)"`;
+        var layerConfigHandlers = isLayerConfigIgnored(overlay) ? "" : 'data-configurable="true"';
         $(".outerContainer").append(`
         <div class="multiViewBox layerBox ${tileSettingsClasses(overlay)}" ${layerConfigHandlers} id="${overlay.layerKey}" data-input-key="${overlay.inputKey}" style="
             height: ${overlay.zoomY}%;
@@ -1176,6 +1195,10 @@ function copy(that){
     document.execCommand('copy',false);
     window.getSelection().removeAllRanges();
 }
+
+$(document).on('click', '#saveURL', copy);
+$(document).on('click', '.outerContainer .layerBox[data-configurable]', function(event) { return openLayerContextMenu(event, this); });
+$(document).on('click', '.outerContainer .multiViewBox:not(.layerBox)', function() { Mask(this); });
 
 function saveOrUpdateEntry(array, key, value) {
     // Vérifier si la clé existe déjà dans le tableau

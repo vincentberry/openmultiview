@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
 const defaultURL = 'https://vincentberry.github.io/openmultiview/';
 const publicFiles = ['home.html', 'guide.html', 'privacy.html', 'site.css', 'site.js', 'site.webmanifest', 'robots.txt', 'sitemap.xml', 'i18n.js', 'locales.js', 'locales-studio.js', 'locales-docs.js',
     'config.html', 'config.css', 'player.html', 'style_player.css', 'script_player.js', 'style.css', 'studio.css', 'script.js', 'studio.js',
-    'multiview-model.js', 'multiview-builder.js', 'jquery.js', 'favicon.ico', 'loop.png', 'mask.png', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
+    'multiview-model.js', 'multiview-builder.js', 'connection.js', 'jquery.js', 'favicon.ico', 'loop.png', 'mask.png', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
     'assets/openmultiview-icon.png', 'assets/openmultiview-logo.png', 'assets/social-card.jpg', 'assets/social-card-en.jpg', 'assets/social-card-es.jpg'];
 async function build({directory = path.join(root, 'dist'), publicURL = process.env.PUBLIC_URL || defaultURL} = {}) {
     const url = new URL(publicURL);

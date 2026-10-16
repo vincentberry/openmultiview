@@ -6,7 +6,7 @@
     <title>OpenMultiview · Configuration du multiview vMix</title>
     <meta name="robots" content="noindex, follow">
     <meta name="referrer" content="no-referrer">
-    <link rel="stylesheet" href="config.css?v=20261016-form-alignment">
+    <link rel="stylesheet" href="config.css?v=20261016-local-access">
     <link rel="shortcut icon" href="./favicon.ico">
 </head>
 <body class="config-page">
@@ -14,7 +14,7 @@
         <button type="button" class="settingsHandle" id="settingsHandle">Configuration</button>
         <div class="settingsURL">
             <div class="settingsTooltip">URL with current settings: </div>
-            <input type="text" onclick="copy()" id="saveURL">
+            <input type="text" id="saveURL">
         </div>
         <div class="settings">
             <div class="settingGroup sources">
@@ -141,13 +141,14 @@
     </div>
     <div id="layerContextMenu" class="layerContextMenu"></div>
     <script src="locales.js?v=20261014-source-labels"></script>
-    <script src="locales-studio.js?v=20261016-form-alignment"></script>
+    <script src="locales-studio.js?v=20261016-local-access"></script>
     <script src="locales-docs.js?v=20261014-source-labels"></script>
     <script src="i18n.js?v=20261014-source-labels"></script>
     <script src="jquery.js"></script>
     <script src="multiview-model.js?v=20261016-preset-recall"></script>
     <script src="multiview-builder.js?v=20261016-preset-recall"></script>
-    <script src="script.js?v=20261014-source-labels"></script>
-    <script src="studio.js?v=20261016-preset-recall"></script>
+    <script src="connection.js?v=20261016-local-access"></script>
+    <script src="script.js?v=20261016-local-access"></script>
+    <script src="studio.js?v=20261016-local-access"></script>
 </body>
 </html>

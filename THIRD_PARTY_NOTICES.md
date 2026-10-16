@@ -1,5 +1,10 @@
 # Third-party notices
 
+The offline Windows application bundles Electron (MIT), Chromium and Node.js.
+Their licenses and third-party notices are distributed with the embedded
+Electron runtime, including `LICENSES.chromium.html`. Electron's source and
+license are available at https://github.com/electron/electron.
+
 `jquery.js` includes jQuery 3.5.1, distributed under the MIT license. Its
 original copyright header is retained. See [jQuery licensing](https://jquery.com/license/).
 

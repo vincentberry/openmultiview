@@ -4,6 +4,7 @@
     const M = MultiviewModel;
     const B = MultiviewBuilder;
     const control = document.body.classList.contains('config-page');
+    const offlineDesktop = document.body.dataset?.desktop === 'true';
     const query = M.urlParameters(location.href);
     let screenIndex = Math.min(M.MAX_SCREENS - 1, Math.max(0, Math.floor(Number(query.get('Screen')) || 1) - 1));
     let applying = false;
@@ -304,8 +305,10 @@
             }
             if(!found) {
                 if(control) {
-                    $('.local-badge').text(bridge ? 'Synchronisation interrompue' : 'Serveur de synchronisation requis').removeClass('is-connected').addClass('is-warning');
-                    $('#syncHelp').empty().append(document.createTextNode('Lancez le compagnon OpenMultiview sur ce PC (start-openmultiview.cmd ou node server.js). Les sites officiels et les pages locales détectent le port 8090. Autorisez l’accès au réseau local si votre navigateur le demande. '), $('<a>').attr('href', 'guide.html#installation').text('Guide d’installation'));
+                    const permission = typeof localNetwork === 'undefined' || !localNetwork ? 'unknown' : localNetwork.state(bridgeURL());
+                    const blocked = permission === 'denied' || permission === 'prompt';
+                    $('.local-badge').text(blocked ? 'Compagnon : autorisation locale nécessaire' : bridge ? 'Synchronisation interrompue' : 'Compagnon non détecté').removeClass('is-connected').addClass('is-warning');
+                    $('#syncHelp').text(blocked ? 'Le navigateur bloque l’accès à votre ordinateur. Vérifiez les paramètres du site ou utilisez la configuration locale du compagnon.' : 'Ouvrez OpenMultiview-Offline.exe sur le PC vMix pour utiliser l’application hors ligne et synchroniser les navigateurs vMix. L’application utilise le port local 8090 ; vMix utilise son propre port API, généralement 8088.');
                 }
                 return;
             }
@@ -326,8 +329,8 @@
             }
             if(control && (!remote || remote.updated < state.updated) && !firstConnection) persist();
             if(control) {
-                $('.local-badge').text('Synchronisation locale active').removeClass('is-warning').addClass('is-connected');
-                $('#syncHelp').text('Chrome et les navigateurs vMix se synchronisent via ' + bridgeBase + '. Les réglages sont conservés sur ce PC.');
+                $('.local-badge').text(offlineDesktop ? 'Application hors ligne · synchronisation active' : 'Synchronisation locale active').removeClass('is-warning').addClass('is-connected');
+                $('#syncHelp').text(offlineDesktop ? 'Toutes les pages sont embarquées dans cette application. Les inputs HTML vMix utilisent son serveur local. Aucun accès Internet n’est nécessaire.' : 'Chrome et les navigateurs vMix se synchronisent via ' + bridgeBase + '. Les réglages sont conservés sur ce PC.');
                 if(firstConnection) { htmlRepairAttempts.clear(); persist(); }
             }
             if(firstConnection) pollPresence();
@@ -375,7 +378,7 @@
     sources.find('.sourceSettings').remove();
     const panel = sources.find('#selectedInputPanel').detach().addClass('studio-card');
     $('.hideContainer').append(`
-        <header class="studio-header"><div class="studio-heading"><a class="app-brand" href="home.html"><span class="app-brand-mark"><img src="assets/openmultiview-icon.png" alt="" width="48" height="48"></span>OpenMultiview</a><h1>Votre régie, à votre mesure.</h1></div><div class="studio-header-tools"><a href="guide.html" class="guide-link">Guide de démarrage ↗</a><span class="local-badge">Contrôle sur ce PC</span></div></header>
+        <header class="studio-header"><div class="studio-heading"><a class="app-brand" href="home.html"><span class="app-brand-mark"><img src="assets/openmultiview-icon.png" alt="" width="48" height="48"></span>OpenMultiview</a><h1>Votre régie, à votre mesure.</h1></div><div class="studio-header-tools"><a href="guide.html" class="guide-link">Guide de démarrage ↗</a><div class="connection-badges"><span class="local-badge">Compagnon non détecté</span><button type="button" id="connectionBadge" class="vmix-badge" aria-controls="view-connection">Connexion vMix à vérifier</button></div></div></header>
         <div class="screen-toolbar"><label class="field"><span>Écran</span><select id="activeScreen" aria-label="Écran à configurer"></select></label><span id="screenContext" class="screen-context"></span><a id="openCurrentScreen" class="button-link" target="_blank" rel="noopener" aria-label="Ouvrir cet écran"><span class="desktop-label">Ouvrir cet écran</span><span class="compact-label">Ouvrir</span> ↗</a></div>
         <nav class="studio-nav" role="tablist" aria-label="Configuration du multiview">
         <button type="button" role="tab" id="tab-layouts" data-view="layouts" aria-controls="view-layouts">Disposition</button>
@@ -399,7 +402,7 @@
         <section class="studio-card html-source-card" id="htmlLayerCard" aria-labelledby="htmlSourceTitle"><div class="html-source-heading"><span class="layer-number">10</span><div><h3 id="htmlSourceTitle">Source HTML du multiview</h3><p id="htmlSourceParent"></p></div><span id="htmlSourceStatus" class="html-source-status"></span></div><div class="html-source-binding"><strong id="htmlSourceInput"></strong><code id="htmlSourceID"></code><p>Habillage en plein écran, au-dessus des vignettes. Ce layer reste réservé à la page web de cet écran.</p></div><div class="html-source-actions"><button id="repairHTML" type="button" class="primary-button" hidden>Créer la source HTML</button><button id="refreshHTMLPage" type="button" hidden>Actualiser dans vMix</button><a id="openHTMLSource" target="_blank" rel="noopener">Ouvrir la page HTML</a></div></section>
         <div class="layer-workspace"><section class="studio-card layers-card"><h2>Vignettes de cet écran</h2><div id="layerList" class="layer-list"></div><details id="inactiveLayers" class="inactive-layers" hidden><summary id="inactiveLayersSummary">Layers désactivés</summary><div id="inactiveLayerList" class="layer-list"></div></details></section><div id="layerEditor"></div></div></section>
         <section class="studio-view" id="view-options" role="tabpanel" aria-labelledby="tab-options" hidden><div class="section-intro"><h2>Horloge & informations</h2><p>Réglez les informations supplémentaires pour cet écran.</p></div><div id="extraSettingsSlot"></div></section>
-        <section class="studio-view" id="view-connection" role="tabpanel" aria-labelledby="tab-connection" hidden><section class="studio-card connection"><div class="section-intro"><h2>Connexion & écrans</h2><p>Ces réglages sont associés au PC de la régie.</p></div><div class="field-grid">
+        <section class="studio-view" id="view-connection" role="tabpanel" aria-labelledby="tab-connection" hidden><section class="studio-card connection"><div class="section-intro"><h2>Connexion & écrans</h2><p>Ces réglages sont associés au PC de la régie.</p></div><section class="connection-check" aria-label="État de la connexion"><strong id="vmixConnectionStatus" role="status" aria-live="polite">Connexion vMix à vérifier</strong><p id="vmixConnectionHelp"></p><p id="vmixCommandStatus"></p><div class="connection-actions"><button type="button" id="connectVmix" class="primary-button">Connecter à vMix</button><a id="vmixApiLink" target="_blank" rel="noopener noreferrer">Tester l’API dans un onglet ↗</a><a id="localConfigurationLink" href="http://127.0.0.1:8090/config.html" target="_blank" rel="noopener noreferrer">Ouvrir la configuration locale ↗</a></div><div id="browserAccessHelp" class="browser-access-help"><strong>Autoriser l’accès à vMix sur ce PC</strong><p>Le site en ligne doit communiquer avec une application de votre ordinateur. Dans les paramètres du site de Chrome ou Edge, cette autorisation peut s’appeler « Réseau local », « Applications sur cet appareil » ou « Réseau de bouclage ». Si aucune option n’apparaît, lancez le compagnon Windows et utilisez sa configuration locale.</p><a href="guide.html#connexion-locale" target="_blank" rel="noopener">Voir les étapes de connexion ↗</a></div></section><div class="field-grid">
         <label class="field">Identifiant de ce PC<input id="pcName" maxlength="80"><small>Un nom pour retrouver cette configuration.</small></label><label class="field">Adresse vMix<input id="vmixHost" placeholder="127.0.0.1"><small>127.0.0.1 si vMix fonctionne sur ce PC.</small></label>
         <label class="field">Port API<input id="vmixPort" type="number" min="1" max="65535"></label><label class="field">Nombre d’écrans<input id="screenCount" type="number" min="1" max="${M.MAX_SCREENS}" step="1"><small>Ouvrez une page web par écran.</small></label></div><button id="saveConnection" type="button" class="primary-button">Enregistrer la connexion</button>
         <details class="help-details"><summary>Démarrage et synchronisation</summary><p id="syncHelp">Lancez le compagnon OpenMultiview sur le PC vMix pour synchroniser les pages web. Sans compagnon, conservez les URL de rappel et utilisez le même profil navigateur.</p></details></section></section>
@@ -410,6 +413,42 @@
     `);
     extraSettings.appendTo('#extraSettingsSlot');
     panel.appendTo('#layerEditor');
+    if(offlineDesktop) {
+        $('.app-brand').attr('href', 'config.html');
+        $('#localConfigurationLink').prop('hidden', true);
+        $('#view-recall .section-intro p').first().text('Mémorisez la disposition, les sources et l’habillage de tous vos écrans. Les modèles sont enregistrés dans cette application, sur ce PC.');
+    }
+    let connectionSignature;
+    function renderConnectionStatus() {
+        const api = 'http://' + state.host + ':' + state.port + '/api';
+        const status = typeof vmixConnection === 'undefined' ? {state: 'checking', message: ''} : vmixConnection;
+        const permission = typeof localNetwork === 'undefined' || !localNetwork ? 'unknown' : localNetwork.state(api);
+        const current = permission === 'denied' ? 'denied' : permission === 'prompt' && status.state !== 'connected' ? 'permission' : status.state;
+        const labels = {connected: 'vMix connecté', denied: 'Accès à ce PC refusé par le navigateur', permission: 'Autorisation d’accès à ce PC nécessaire', unreachable: 'Lecture de l’API vMix indisponible', checking: 'Connexion vMix à vérifier'};
+        const signature = JSON.stringify([api, current, status.message, status.lastCommand, status.commandUnconfirmed]);
+        if(signature === connectionSignature) return;
+        connectionSignature = signature;
+        const label = labels[current] || labels.checking;
+        $('#vmixConnectionStatus, #connectionBadge').text(label).attr('data-status', current);
+        $('#vmixConnectionHelp').text(current === 'connected' ? 'La page communique avec l’API vMix. Vous pouvez appliquer un preset.' : current === 'permission' ? 'Cliquez sur « Connecter à vMix », puis acceptez la demande de votre navigateur pour communiquer avec vMix sur ce PC.' : current === 'denied' ? 'Le navigateur bloque l’accès à votre ordinateur. Vérifiez les paramètres du site ou utilisez la configuration locale du compagnon.' : status.message || 'Vérifiez que vMix est ouvert et que son Web Controller est activé.');
+        $('#browserAccessHelp').prop('hidden', M.isLoopbackURL(location.href) || current === 'connected');
+        $('#vmixApiLink').attr('href', api);
+        $('#localConfigurationLink').attr('href', new URL('config.html?PC=' + encodeURIComponent(state.pc), bridgeBase).href);
+        $('#connectVmix').text(current === 'connected' ? 'Tester la connexion' : 'Connecter à vMix');
+        $('#vmixCommandStatus').text(status.commandUnconfirmed ? 'La réponse à la dernière commande n’a pas pu être lue. Elle a pu être exécutée dans vMix.' : status.lastCommand ? 'Dernière commande acceptée par vMix : ' + status.lastCommand : '');
+    }
+    window.addEventListener('openmultiview-connection', renderConnectionStatus);
+    window.addEventListener('openmultiview-network', () => { renderConnectionStatus(); if(typeof vmixConnection !== 'undefined') vmixConnection.nextAttempt = 0; });
+    window.addEventListener('openmultiview-language', () => { connectionSignature = undefined; renderConnectionStatus(); });
+    $('#connectionBadge').on('click', () => showView('connection'));
+    $('#connectVmix').on('click', async () => {
+        if(!saveConnection()) return;
+        if(typeof localNetwork !== 'undefined' && localNetwork) localNetwork.request();
+        $('#connectVmix').prop('disabled', true);
+        try { await pollVmix(true); await pollBridge(); }
+        finally { $('#connectVmix').prop('disabled', false); renderConnectionStatus(); }
+    });
+    renderConnectionStatus();
     [['pcName', 'Identifiant de ce PC'], ['vmixHost', 'Adresse vMix'], ['screenCount', 'Nombre d’écrans']].forEach(([id, label]) => {
         $('#' + id).attr({'aria-label': label, 'aria-describedby': id + 'Help'}).parent().find('small').attr('id', id + 'Help');
     });
@@ -732,8 +771,13 @@
         if(functionName === 'BrowserNavigate' && query.toString().length > 7000) throw new Error('URL trop longue pour vMix. Lancez start-openmultiview.cmd sur le PC vMix pour utiliser une URL courte et conserver les réglages.');
         let response;
         try { response = await fetchWithTimeout('http://' + state.host + ':' + state.port + '/api/?' + query); }
-        catch(error) { throw new Error('Impossible de joindre vMix pour ' + functionName + '. Vérifiez son API HTTP, le port ' + state.port + ' et l’autorisation d’accès au réseau local.'); }
+        catch(error) {
+            if(error.code === 'LOCAL_NETWORK_ACCESS') throw error;
+            if(typeof vmixConnection !== 'undefined') { vmixConnection.commandUnconfirmed = true; connectionChanged(); }
+            throw new Error('La réponse de vMix à ' + functionName + ' n’a pas pu être lue. La commande a pu être exécutée ; vérifiez son résultat dans vMix avant de réessayer.');
+        }
         if(!response.ok) throw new Error('vMix a refusé ' + functionName + ' (' + response.status + '). Relancez la construction après vérification.');
+        if(typeof vmixConnection !== 'undefined') { vmixConnection.lastCommand = functionName; vmixConnection.commandUnconfirmed = false; connectionChanged(); }
     }
     const htmlRepairKey = s => [state.pc, state.host, state.port, s.managed.root, s.managed.browser].join('|');
     async function repairHTML(indices, automatic = false) {
@@ -953,14 +997,18 @@
             state.updated = M.nextUpdate(state.updated); persist(); loadScreen();
         } catch(error) { this.value = state.screens.length; notice(error.message); }
     });
-    $('#saveConnection').on('click', () => {
+    function saveConnection() {
         try {
             const next = M.validate({...state, pc: $('#pcName').val().trim(), host: $('#vmixHost').val().trim(), port: $('#vmixPort').val(), screens: resizedScreens(Number($('#screenCount').val()))});
             state = next; screenIndex = Math.min(screenIndex, state.screens.length - 1); state.updated = M.nextUpdate(state.updated); connect(); persist(); lastResponse = undefined; loadScreen(); renderPresets();
             history.replaceState(null, '', url(screenIndex, true));
             notice('Connexion enregistrée. Utilisez les nouvelles URL pour les pages d’affichage.');
-        } catch(error) { notice(error.message); }
-    });
+            if(typeof vmixConnection !== 'undefined') vmixConnection.nextAttempt = 0;
+            renderConnectionStatus();
+            return true;
+        } catch(error) { notice(error.message); return false; }
+    }
+    $('#saveConnection').on('click', saveConnection);
     const presetKey = () => key(state.pc) + '.presets';
     function renderPresets() {
         $('#savedPresets').empty().append(new Option('Choisir un modèle enregistré', ''));

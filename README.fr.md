@@ -17,7 +17,9 @@ inputs qui existent déjà. Le layer 10 de chaque entrée principale reste rése
 
 ## Démarrer
 
-Prérequis : vMix 27 ou ultérieur pour les commandes de layers, Node.js 22 ou
+Sur Windows, [OpenMultiview hors ligne](docs/companion-windows.md) est une application complète avec sa propre fenêtre. Elle embarque tous les composants et fonctionne sans Internet, sans Node.js installé et sans navigateur externe.
+
+Pour lancer depuis les sources : vMix 27 ou ultérieur pour les commandes de layers, Node.js 22 ou
 ultérieur, et l’API vMix accessible sur le PC (port 8088 par défaut).
 
 1. Installez [Node.js](https://nodejs.org/en/download) si nécessaire.

@@ -1,0 +1,32 @@
+name: Application Windows hors ligne
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:desktop
+      - name: Test the packaged offline application
+        run: node scripts/test-desktop.cjs --portable
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenMultiview-Offline-Windows-x64
+          if-no-files-found: error
+          path: |
+            release/desktop/OpenMultiview-Offline.exe
+            release/desktop/OpenMultiview-Offline.exe.sha256

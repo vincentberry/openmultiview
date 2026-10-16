@@ -14,6 +14,7 @@ const assets = new Set(['index.html', 'config.html', 'config.css', 'player.html'
 assets.add('assets/social-card.html');
 ['assets/social-card-en.jpg','assets/social-card-es.jpg'].forEach(name => assets.add(name));
 ['locales.js','locales-studio.js','locales-docs.js','i18n.js'].forEach(name => assets.add(name));
+assets.add('connection.js');
 const localizedPages = new Map(I.languages.filter(lang => lang !== 'fr').flatMap(lang => ['home.html','guide.html','privacy.html'].map(page => [I.pageName(page, lang), {page,lang}])));
 for(const lang of ['en','es']) localizedPages.set('assets/social-card.' + lang + '.html', {page:'assets/social-card.html', lang});
 const applicationParameters = ['Input', 'Inputs', 'Input2', 'Settings', 'MaskSettings', 'PC', 'Screen', 'Config', 'IP', 'Port'];
@@ -22,7 +23,7 @@ function respond(res, status, data) {
     res.writeHead(status, {'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store'});
     res.end(JSON.stringify(data));
 }
-function createServer({now = Date.now, publicOrigins = [...M.PUBLIC_ORIGINS, ...(process.env.MULTIVIEW_PUBLIC_ORIGINS || '').split(',').filter(Boolean)]} = {}) {
+function createServer({now = Date.now, desktop = false, publicOrigins = [...M.PUBLIC_ORIGINS, ...(process.env.MULTIVIEW_PUBLIC_ORIGINS || '').split(',').filter(Boolean)]} = {}) {
     const trustedOrigins = new Set(publicOrigins.map(value => {
         const url = new URL(value.trim());
         if(url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error('Les origines publiques doivent être des origines HTTPS sans chemin.');
@@ -32,7 +33,7 @@ function createServer({now = Date.now, publicOrigins = [...M.PUBLIC_ORIGINS, ...
     return http.createServer({maxHeaderSize: 128 * 1024}, async (req, res) => {
         try {
             const url = new URL(req.url, 'http://127.0.0.1:' + port);
-            if(['/control-api', '/presence-api'].includes(url.pathname)) {
+            if(['/control-api', '/presence-api', '/companion-api'].includes(url.pathname)) {
                 const origin = req.headers.origin;
                 if(!M.isLoopbackURL('http://' + req.headers.host) || origin && !M.isLoopbackURL(origin) && !trustedOrigins.has(origin)) return respond(res, 403, {error: 'Origine refusée'});
                 if(origin) {
@@ -44,6 +45,10 @@ function createServer({now = Date.now, publicOrigins = [...M.PUBLIC_ORIGINS, ...
                     res.writeHead(204, {'Access-Control-Allow-Methods': 'GET, PUT, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type'});
                     res.end(); return;
                 }
+            }
+            if(url.pathname === '/companion-api') {
+                if(req.method !== 'GET') return respond(res, 405, {error: 'Méthode non autorisée'});
+                return respond(res, 200, {application: 'OpenMultiview', version: require('./package.json').version});
             }
             if(url.pathname === '/presence-api') {
                 const pc = url.searchParams.get('PC');
@@ -106,6 +111,7 @@ function createServer({now = Date.now, publicOrigins = [...M.PUBLIC_ORIGINS, ...
             if(!assets.has(name) && !localizedPages.has(name)) return respond(res, 404, {error: 'Fichier introuvable'});
             const localized = localizedPages.get(name);
             let content = await fs.readFile(path.join(root, localized ? localized.page : name));
+            if(desktop && ['config.html', 'index.html'].includes(name)) content = Buffer.from(content.toString().replace(/<body(?=[\s>])/, '<body data-desktop="true"'));
             if(localized && localized.page === 'assets/social-card.html') content = I.localizeHTML(content.toString(), localized.lang);
             else if(localized || ['home.html','guide.html','privacy.html'].includes(name)) content = I.publicDocument(content.toString(), localized ? localized.page : name, localized ? localized.lang : 'fr', 'https://vincentberry.github.io/openmultiview/');
             const headers = {'Content-Type': types[path.extname(name)] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer'};
