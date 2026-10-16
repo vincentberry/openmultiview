@@ -4,7 +4,7 @@ const P = require('../desktop/policy.cjs');
 const origin = 'http://127.0.0.1:8090';
 
 test('offline app resources and local vMix API calls are allowed without public requests', () => {
-    for(const url of [origin + '/config.html', origin + '/connection.js', 'http://127.0.0.1:8088/api', 'http://localhost:8088/api/?Function=BrowserNavigate', 'http://vmix-pc:8088/api', 'http://vmix.local:8088/api']) assert.equal(P.allowRequest(url, origin, 'xhr'), true, url);
+    for(const url of [origin + '/config.html', origin + '/js/connection.js', 'http://127.0.0.1:8088/api', 'http://localhost:8088/api/?Function=BrowserNavigate', 'http://vmix-pc:8088/api', 'http://vmix.local:8088/api']) assert.equal(P.allowRequest(url, origin, 'xhr'), true, url);
     for(const url of ['https://vincentberry.github.io/openmultiview/config.html', 'https://example.com/script.js', 'http://localhost.evil.example:8088/api', 'file:///private-file', 'http://user:password@127.0.0.1:8088/api', 'http://127.0.0.1:8088/other']) assert.equal(P.allowRequest(url, origin, 'xhr'), false, url);
     assert.equal(P.allowRequest('data:image/png;base64,AA', origin, 'image'), true);
     assert.equal(P.allowRequest('data:text/html,hello', origin, 'mainFrame'), false);
@@ -26,8 +26,8 @@ test('desktop server serves the same complete interface with offline mode and a 
     try {
         assert.match(await (await fetch(base + '/config.html')).text(), /<body data-desktop="true" class="config-page">/);
         assert.match(await (await fetch(base + '/index.html')).text(), /data-desktop="true"/);
-        for(const asset of ['/connection.js', '/studio.js', '/guide.html', '/assets/openmultiview-icon.png']) assert.equal((await fetch(base + asset)).status, 200, asset);
-        const M = require('../multiview-model');
+        for(const asset of ['/js/connection.js', '/js/config.js', '/guide.html', '/assets/openmultiview-icon.png']) assert.equal((await fetch(base + asset)).status, 200, asset);
+        const M = require('../public/js/multiview-model');
         const config = {version: 1, pc: 'offline-test', host: '127.0.0.1', port: '8088', updated: 1, screens: [M.screen(['root'])]};
         const display = new URL(M.recallURL(base + '/config.html', config, 0, {linked: true}));
         assert.equal(display.origin, base);

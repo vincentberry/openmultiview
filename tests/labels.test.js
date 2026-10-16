@@ -3,14 +3,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const M = require('../multiview-model');
+const M = require('../public/js/multiview-model');
 
 function labelScope() {
     const empty = new Proxy({length:0}, {get:(_,key)=>key==='length'?0:()=>empty});
     const scope = vm.createContext({MultiviewModel:M,URLSearchParams,console,
         window:{location:{href:'http://localhost/index.html',search:''}},document:{},Option:function(){},$:()=>empty,
         setInterval:()=>0,setTimeout:()=>0,clearTimeout(){}});
-    vm.runInContext(fs.readFileSync(path.join(__dirname,'../script.js'),'utf8'),scope);
+    vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/viewer.js'),'utf8'),scope);
     scope.vMixInputs = [
         {key:'cam',number:1,title:'Caméra A',type:'Capture'},
         {key:'clip',number:2,title:'Clip B',type:'Video'},

@@ -45,6 +45,23 @@ chaque push sur `main`. Dans un fork, activer Pages avec une source GitHub
 Actions avant d’utiliser ce workflow. Les tests Windows/Linux tournent aussi
 dans `test.yml`.
 
+## Hébergement Docker facultatif
+
+Le déploiement GitHub Pages utilise directement `npm run build`. Les fichiers
+Docker servent à héberger vous-même le site statique et sont regroupés dans
+`deploy/docker/` : `Dockerfile`, `docker-compose.yml` et `nginx.conf`.
+
+Depuis la racine du dépôt :
+
+```powershell
+docker compose -f deploy/docker/docker-compose.yml up --build -d
+```
+
+Cette configuration suppose un réseau Docker externe nommé `web`, partagé
+avec votre reverse proxy. Le conteneur expose le port 80 sur ce réseau.
+L’image construit `dist/` puis le sert avec nginx ; elle ne remplace pas le
+serveur local de l’application Windows pour la synchronisation avec vMix.
+
 ## Référencement préparé
 
 L’accueil, le guide et la confidentialité sont disponibles en français,

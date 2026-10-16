@@ -1,6 +1,6 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0.."
 where node >nul 2>nul
 if errorlevel 1 (
   echo OpenMultiview requires Node.js 22 or newer.

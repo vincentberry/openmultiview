@@ -753,7 +753,7 @@ function generateLayerTimer(inputState, overlay){
         <div class="layerMediaTitle" title="${mediaTitle}"${listVisible ? "" : " hidden"}>${mediaTitle}</div>
         <div class="layerTimerTimes">
             <div class="layerElapsed"${listVisible ? "" : " hidden"}><span class="layerTimeLabel">Écoulé</span><span class="layerElapsedValue">${listVisible ? msToTime(timerInfo.elapsed) : ""}</span></div>
-            <div class="layerRemaining"><span class="layerTimeLabel">Restant</span><div class="layerRemainingValue"><img class="layerLoop" src="./loop.png" alt="Lecture en boucle" title="Lecture en boucle"${timerInfo && timerInfo.loop ? "" : " hidden"}><span class="layerTimerValue">${timerText}</span></div></div>
+            <div class="layerRemaining"><span class="layerTimeLabel">Restant</span><div class="layerRemainingValue"><img class="layerLoop" src="assets/loop.png" alt="Lecture en boucle" title="Lecture en boucle"${timerInfo && timerInfo.loop ? "" : " hidden"}><span class="layerTimerValue">${timerText}</span></div></div>
         </div>
     </div>`;
 }

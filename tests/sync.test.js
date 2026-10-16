@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
-const M = require('../multiview-model');
+const M = require('../public/js/multiview-model');
 
 test('local static pages discover the PC bridge after their own server, while hosted pages stay on their site', () => {
     assert.deepEqual(M.syncBases('http://127.0.0.1:5500/index.html?PC=regie'), ['http://127.0.0.1:5500/','http://127.0.0.1:8090/']);

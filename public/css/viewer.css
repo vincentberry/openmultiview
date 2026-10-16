@@ -403,7 +403,7 @@ div#clock {
     background-position: center top;
     background-repeat: no-repeat;
     background-size: contain;
-    -webkit-mask: url(./mask.png);
+    -webkit-mask: url(../assets/mask.png);
     -webkit-mask-size: cover;
     -webkit-mask-repeat: no-repeat;
     /* clip-path: inset(0% 0% 0% 0%) !important; */
@@ -473,11 +473,11 @@ div#clock {
     height: 90%;
     width: 22%;
     /* transition: all 0.05s ease; */
-    background: url(./mask.png);
+    background: url(../assets/mask.png);
     background-position: center top;
     background-repeat: no-repeat;
     background-size: cover;
-    -webkit-mask: url(./mask.png);
+    -webkit-mask: url(../assets/mask.png);
     -webkit-mask-size: cover;
     -webkit-mask-repeat: no-repeat;
     clip-path: inset(0% 0% 0% 0%) !important;
@@ -532,8 +532,8 @@ div#clock {
     width: 100%;
     height: 100%;
     background: linear-gradient(to top, #4caf50 0%, #4caf50 70%, #ffeb3b 70%, #ffeb3b 90%, #f44336 90%, #f44336 100%);
-    -webkit-mask: url(./mask.png) center / 100% 100% no-repeat;
-    mask: url(./mask.png) center / 100% 100% no-repeat;
+    -webkit-mask: url(../assets/mask.png) center / 100% 100% no-repeat;
+    mask: url(../assets/mask.png) center / 100% 100% no-repeat;
     transition: none;
 }
 

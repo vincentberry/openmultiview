@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const M = require('../multiview-model');
+const M = require('../public/js/multiview-model');
 
 function timerScope() {
     const empty = new Proxy({length: 0}, {get: (target, key) => key === 'length' ? 0 : () => empty});
@@ -13,7 +13,7 @@ function timerScope() {
         document: {}, Option: function() {}, $: () => empty,
         setInterval: () => 0, setTimeout: () => 0, clearTimeout: () => {}
     });
-    vm.runInContext(fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8'), scope);
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js/viewer.js'), 'utf8'), scope);
     scope.vMixInputs = [
         {key: 'clip', number: 1, title: 'Clip', shortTitle: 'Clip', type: 'Video', video: true, duration: '60000', position: '55000', loop: true},
         {key: 'other', number: 2, title: 'Other', type: 'Video', video: true, duration: '90000', position: '10000', loop: false},

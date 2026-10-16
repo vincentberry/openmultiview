@@ -1,7 +1,7 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const M = require('../multiview-model');
-const B = require('../multiview-builder');
+const M = require('../public/js/multiview-model');
+const B = require('../public/js/multiview-builder');
 
 const {fakeVmix} = require('./helpers/fake-vmix.cjs');
 

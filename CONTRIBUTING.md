@@ -16,7 +16,8 @@ For substantial changes, open an issue describing the production need and the
 expected behavior. For a small fix, a pull request is enough.
 
 1. Fork and clone the repository.
-2. Use Node.js 22 or later; there are no npm dependencies.
+2. Use Node.js 22 or later. The local server needs no npm dependencies;
+   run `npm ci` if you want to run or build the Electron application.
 3. Start with `npm start` and run `npm test` after changing behavior.
 4. Build with `npm run build` if the public site or hosting changed.
 5. Describe the user-visible change and how it was verified in the pull request.
@@ -29,5 +30,11 @@ vMix adapter for tests; do not require a contributor's real production inputs.
 Keep the dependency-free runtime where possible. Add tests for meaningful
 behavior, rather than duplicating markup assertions. Inspect visual changes on
 desktop and a narrow viewport, including overflow and keyboard access.
+
+Edit website sources in `public/`, with scripts in `js/`, styles in `css/`,
+images in `assets/` and third-party browser code in `vendor/`. Register new
+resources in `scripts/web-files.cjs`; the server and both builds share this
+allowlist. Keep page URLs compatible with existing vMix recall links.
+`dist/` and `release/` are generated output, not source directories.
 
 By submitting a contribution, you provide it under the project's MIT license.

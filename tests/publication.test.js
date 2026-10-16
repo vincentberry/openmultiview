@@ -4,7 +4,7 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const vm = require('node:vm');
-const M = require('../multiview-model');
+const M = require('../public/js/multiview-model');
 const {build} = require('../scripts/build-public.cjs');
 
 test('the public site serves the home page while root legacy URLs and explicit viewer paths retain the overlay', async () => {
@@ -24,7 +24,7 @@ test('the public site serves the home page while root legacy URLs and explicit v
             assert.match(await response.text(), /class="outerContainer"/);
             assert.equal(response.headers.get('x-robots-tag'), 'noindex, follow');
         }
-        for(const suffix of ['/server.js', '/.env', '/../../server.js']) assert.equal((await fetch(base + suffix)).status, 404);
+        for(const suffix of ['/server.js', '/.env', '/../../server.js', '/scripts/web-files.cjs', '/public/config.html']) assert.equal((await fetch(base + suffix)).status, 404);
     } finally { await new Promise(resolve => server.close(resolve)); }
 });
 
@@ -89,8 +89,8 @@ test('static publishing changes canonical and sitemap URLs, ships legacy dispatc
         assert.equal(structured['@graph'][0].name, 'OpenMultiview');
         assert.match(await fs.readFile(path.join(directory, 'sitemap.xml'), 'utf8'), /https:\/\/example.com\/community\/guide.html/);
         assert.match(await fs.readFile(path.join(directory, 'viewer.html'), 'utf8'), /noindex, follow/);
-        assert.match(await fs.readFile(path.join(directory, 'site.js'), 'utf8'), /viewer\.html/);
-        const model = require(path.join(directory, 'multiview-model.js'));
+        assert.match(await fs.readFile(path.join(directory, 'js/site.js'), 'utf8'), /viewer\.html/);
+        const model = require(path.join(directory, 'js/multiview-model.js'));
         assert.deepEqual(model.syncBases(publicURL + 'config.html'), ['http://127.0.0.1:8090/']);
         for(const name of ['server.js', '.env', 'tests', '.github', 'server.log', 'package.json']) {
             await assert.rejects(fs.access(path.join(directory, name)));
@@ -106,7 +106,7 @@ test('publishing refuses invalid URLs and cannot replace the repository or an un
 });
 
 test('static legacy dispatch preserves source IDs, settings and fragments byte for byte', async () => {
-    const source = await fs.readFile(path.join(__dirname, '../site.js'), 'utf8');
+    const source = await fs.readFile(path.join(__dirname, '../public/js/site.js'), 'utf8');
     const search = '?Inputs=key:some-id,key:another-id&Settings=%5B%7B%22fontSize%22%3A70%7D%5D&MaskSettings=%5B%5D';
     let destination;
     vm.runInNewContext(source, {URL, URLSearchParams, location: {href: 'https://example.com/app/index.html' + search + '#screen', search, hash: '#screen', replace: value => destination = value}});

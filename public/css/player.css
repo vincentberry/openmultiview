@@ -51,7 +51,7 @@ html {
     background-position: center top;
     background-repeat: no-repeat;
     background-size: contain;
-    -webkit-mask: url(./mask.png);
+    -webkit-mask: url(../assets/mask.png);
     -webkit-mask-size: cover;
     -webkit-mask-repeat: no-repeat;
     /* clip-path: inset(0% 0% 0% 0%) !important; */
@@ -112,11 +112,11 @@ html {
     height: 98%;
     width: 80%;
     /* transition: all 0.05s ease; */
-    background: url(./mask.png);
+    background: url(../assets/mask.png);
     background-position: center top;
     background-repeat: no-repeat;
     background-size: cover;
-    -webkit-mask: url(./mask.png);
+    -webkit-mask: url(../assets/mask.png);
     -webkit-mask-size: cover;
     -webkit-mask-repeat: no-repeat;
     clip-path: inset(0% 0% 0% 0%) !important;

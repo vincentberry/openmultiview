@@ -4,11 +4,14 @@ The project and repository name is **OpenMultiview**.
 The symbol contains one large monitor frame, two smaller
 frames, and a tally lamp. Mint represents Preview; coral represents Program.
 
-- `openmultiview-logo.png`: generated master logo.
-- `openmultiview-icon.png`: 192px app icon derived from that master.
-- `../favicon.ico`: 64px favicon derived from the master.
-- `social-card.html`: local rendering source for the sharing card.
-- `social-card.jpg`: 1200×630 social/README image, rendered in the browser.
+- `public/assets/openmultiview-logo.png`: generated master logo.
+- `public/assets/openmultiview-icon.png`: 192px app icon derived from that master.
+- `public/favicon.ico`: 64px favicon derived from the master.
+- `public/assets/social-card.html`: local rendering source for the sharing card.
+- `public/assets/social-card.jpg`: 1200×630 social/README image, rendered in the browser.
+
+Paths above are relative to the repository root. The local companion serves the
+sharing-card source at `/assets/social-card.html` (also `.en.html` and `.es.html`).
 
 The logo was created using the built-in image-generation tool. Its final design
 brief was a crisp, flat broadcast monitor mark: one large mint 16:9 frame, a

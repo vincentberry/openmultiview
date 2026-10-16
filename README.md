@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/openmultiview-icon.png" width="104" alt="OpenMultiview logo"></p>
+<p align="center"><img src="public/assets/openmultiview-icon.png" width="104" alt="OpenMultiview logo"></p>
 
 # OpenMultiview
 
@@ -9,7 +9,7 @@ monitor Preview/Program tally and audio, and recall your screens by URL.
 [Getting started](https://vincentberry.github.io/openmultiview/guide.html) ·
 [Français](README.fr.md) · [Español](README.es.md) · [MIT license](LICENSE)
 
-![OpenMultiview — your vMix multiview, your layout](assets/social-card.jpg)
+![OpenMultiview — your vMix multiview, your layout](public/assets/social-card.jpg)
 
 OpenMultiview grew out of a production workflow and is now available for the
 vMix community to use, adapt and improve. vMix provides the video layers;
@@ -37,6 +37,10 @@ preview is an illustration, not a live video feed.
 
 ## Quick start on the vMix PC
 
+On Windows, the [offline application](docs/companion-windows.md) includes its own
+server and needs neither Node.js nor the source launcher. The steps below are
+the optional way to run directly from the sources.
+
 You need **vMix 27+** for automatic layer commands, **Node.js 22+**, and an
 accessible vMix HTTP API (usually `http://127.0.0.1:8088/api`). Your vMix edition's
 input limits still apply. Chrome or Edge is recommended for configuration.
@@ -44,7 +48,7 @@ input limits still apply. Chrome or Edge is recommended for configuration.
 1. Install [Node.js](https://nodejs.org/en/download) if needed.
 2. [Download the project ZIP](https://github.com/vincentberry/openmultiview/archive/refs/heads/main.zip)
    and extract it.
-3. Run **`start-openmultiview.cmd`** on Windows and keep the window open.
+3. Run **`scripts/start-openmultiview.cmd`** on Windows and keep the window open.
 4. Open [the local configuration](http://127.0.0.1:8090/config.html), or use the
    public site's configuration with local-network access allowed in your browser.
 5. Set your PC identifier, vMix address and screen count, then apply a preset.
@@ -97,16 +101,28 @@ source IDs, legacy URLs, audio routing, timers, presence, PC isolation and publi
 origin restrictions. GitHub Actions runs them on Windows and Linux. A manual
 vMix simulator is available with `node tests/vmix-fixture.cjs` on port 8767.
 
-| File | Purpose |
+| Path | Purpose |
 | --- | --- |
-| `home.html`, `site.css`, `site.js` | Public introduction and illustrative preview |
-| `config.html`, `studio.js`, `config.css` | Configuration interface |
-| `index.html`, `script.js`, `style.css` | Transparent multiview overlay |
-| `multiview-model.js` | Layout, IDs, serialization and compatibility |
-| `multiview-builder.js` | vMix input/layer construction |
+| `public/*.html` | Site pages, configuration, multiview and player |
+| `public/js/site.js`, `public/css/site.css` | Public introduction and illustrative preview |
+| `public/js/config.js`, `public/css/config.css` | Configuration interface |
+| `public/js/viewer.js`, `public/css/viewer*.css` | Transparent multiview overlay and its settings |
+| `public/js/player.js`, `public/css/player.css` | Standalone programme player overlay |
+| `public/js/multiview-model.js` | Shared layout, IDs, serialization and compatibility |
+| `public/js/multiview-builder.js` | vMix input/layer construction |
+| `public/js/locales*.js`, `public/js/i18n.js` | Translations and language selection |
+| `public/assets/`, `public/vendor/` | Images and third-party browser code |
 | `server.js` | PC-local synchronization and static serving |
-| `player.html` | Standalone programme player overlay |
-| `scripts/build-public.cjs` | Allowlisted static-site build |
+| `desktop/` | Offline Windows application and network policy |
+| `scripts/` | Build, audit and desktop verification tools; shared web-file allowlist |
+| `deploy/docker/` | Optional Dockerfile, Compose configuration and nginx configuration |
+| `tests/`, `docs/` | Automated checks, simulator and documentation |
+
+The server exposes `public/` at the site root, so page URLs such as
+`/config.html` and `/index.html` stay unchanged. `dist/` and `release/` contain
+generated output and are ignored by Git; edit the sources in `public/`.
+The local server runs without npm packages. `npm ci` installs the development
+dependencies needed to run or build the Electron application.
 
 ## Hosting your own copy
 
@@ -119,7 +135,7 @@ Publish **only `dist/`** to a static HTTPS host. The build sets canonical, socia
 and sitemap URLs, includes a query-aware entry point for old viewer links, and
 does not publish the companion, `.env` files or PC data. `viewer.html` contains
 the overlay in this bundle; legacy `index.html?Inputs=...` links still dispatch to
-it. The repository's `index.html` remains the overlay for existing local setups.
+it. The source `public/index.html` remains the overlay for existing local setups.
 
 For a custom public origin, launch the companion with:
 
@@ -133,7 +149,10 @@ must match the website you build. `MULTIVIEW_PORT` and `MULTIVIEW_DATA_DIR` can
 override the companion port and storage folder. Public sites currently discover
 the default port 8090.
 
-The Docker image builds the same static bundle and serves it through nginx.
+The optional Docker configuration is in `deploy/docker/`. From the repository
+root, run `docker compose -f deploy/docker/docker-compose.yml up --build -d`.
+It uses an existing external network named `web` for your reverse proxy and
+serves the static bundle through nginx. See [hosting details](docs/publication.md).
 GitHub Pages deployment is automated by `.github/workflows/pages.yml`.
 
 See [public hosting and SEO](docs/publication.md),
@@ -151,7 +170,7 @@ For vulnerabilities, use [private security reporting](SECURITY.md).
 [MIT](LICENSE) — Copyright © 2026 OpenMultiview contributors.
 Third-party notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 The logo and original website assets are included with the project; see
-[branding](assets/BRANDING.md).
+[branding](docs/branding.md).
 
 OpenMultiview is an independent community project. It is not affiliated with or
 endorsed by vMix; vMix is a separate product with its own license.

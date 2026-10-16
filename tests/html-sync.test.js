@@ -2,7 +2,7 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const source = fs.readFileSync(require.resolve('../studio.js'), 'utf8');
+const source = fs.readFileSync(require.resolve('../public/js/config.js'), 'utf8');
 const start = source.indexOf('    async function updateHTMLURLs()');
 const end = source.indexOf('    function syncExtras()', start);
 function setup() {

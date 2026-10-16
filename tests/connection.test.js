@@ -2,7 +2,7 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const C = require('../connection');
+const C = require('../public/js/connection');
 
 function permissionBrowser(initial = 'prompt') {
     const callbacks = [], queries = [];
@@ -59,7 +59,7 @@ test('older LNA permission names fall back without claiming a diagnosis when uns
 });
 
 function polling(fetch) {
-    const source = fs.readFileSync(require.resolve('../script.js'), 'utf8');
+    const source = fs.readFileSync(require.resolve('../public/js/viewer.js'), 'utf8');
     const start = source.indexOf('var pollPending = false;');
     const end = source.indexOf('var overlayArray =', start);
     const chain = {text() { return chain; }, css() { return chain; }};
@@ -96,7 +96,7 @@ test('an explicit browser denial is distinguished from a vMix API failure', asyn
 });
 
 test('command acknowledgements are tracked separately from API reads and ambiguous failures', async () => {
-    const source = fs.readFileSync(require.resolve('../studio.js'), 'utf8');
+    const source = fs.readFileSync(require.resolve('../public/js/config.js'), 'utf8');
     const start = source.indexOf('    async function command(');
     const end = source.indexOf('    const htmlRepairKey', start);
     const scope = vm.createContext({state: {host: '127.0.0.1', port: '8088'}, URLSearchParams,

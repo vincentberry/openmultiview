@@ -3,8 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
-const I = require('../i18n');
-const M = require('../multiview-model');
+const I = require('../public/js/i18n');
+const M = require('../public/js/multiview-model');
 const {build} = require('../scripts/build-public.cjs');
 
 test('language changes translate interface copy and dynamic status while preserving source names and IDs', () => {
@@ -69,7 +69,7 @@ test('the local companion serves the same language pages without exposing privat
             const response=await fetch(base+'/'+page);assert.equal(response.status,200);
             assert.match(await response.text(),new RegExp('<html lang="'+lang+'"'));
         }
-        assert.equal((await fetch(base+'/i18n.js')).status,200);
+        assert.equal((await fetch(base+'/js/i18n.js')).status,200);
         assert.equal((await fetch(base+'/server.es.html')).status,404);
     } finally { await new Promise(resolve=>server.close(resolve)); }
 });

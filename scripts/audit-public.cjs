@@ -1,4 +1,4 @@
-/* Review the exact files destined for Git, without printing their contents. */
+/* Review tracked and new source files, without printing their contents. */
 const fs = require('node:fs');
 const path = require('node:path');
 const {execFileSync} = require('node:child_process');
@@ -30,11 +30,12 @@ function auditFile(name, bytes) {
     return [...new Set(findings)];
 }
 function audit() {
-    let files = execFileSync('git', ['ls-files', '--cached', '-z'], {cwd: root, encoding: 'utf8'}).split('\0').filter(Boolean);
+    let files = [...new Set(execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], {cwd: root, encoding: 'utf8'}).split('\0').filter(Boolean))]
+        .filter(name => fs.existsSync(path.join(root, name)));
     if(!files.length) {
         function walk(directory) {
             return fs.readdirSync(directory, {withFileTypes: true}).flatMap(entry => {
-                if(['.git','dist','node_modules'].includes(entry.name)) return [];
+                if(['.git','dist','release','node_modules'].includes(entry.name)) return [];
                 const file = path.join(directory, entry.name);
                 if(entry.isSymbolicLink()) throw new Error('Public audit refuses symbolic links');
                 return entry.isDirectory() ? walk(file) : [path.relative(root, file).replaceAll('\\', '/')];

@@ -1,6 +1,6 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const M = require('../multiview-model');
+const M = require('../public/js/multiview-model');
 
 const buses = {master: {meterF1: .8, meterF2: .4, muted: 'False'},
     busA: {meterF1: .02, meterF2: .06, muted: 'False'}, busB: {meterF1: .1, meterF2: .9, muted: 'True'}};

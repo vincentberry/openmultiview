@@ -7,7 +7,7 @@ tally, audio et URL de rappel, gratuitement et sans compte.
 [Guide de démarrage](https://vincentberry.github.io/openmultiview/guide.html) · [Español](README.es.md) ·
 [English](README.md) · [Licence MIT](LICENSE)
 
-![OpenMultiview](assets/social-card.jpg)
+![OpenMultiview](public/assets/social-card.jpg)
 
 vMix fournit les vidéos via ses layers. OpenMultiview compose leur disposition
 et ajoute un habillage HTML transparent. Il crée les entrées supplémentaires
@@ -25,7 +25,7 @@ ultérieur, et l’API vMix accessible sur le PC (port 8088 par défaut).
 1. Installez [Node.js](https://nodejs.org/en/download) si nécessaire.
 2. [Téléchargez le ZIP](https://github.com/vincentberry/openmultiview/archive/refs/heads/main.zip)
    et extrayez-le.
-3. Lancez `start-openmultiview.cmd` et gardez la fenêtre ouverte.
+3. Lancez `scripts/start-openmultiview.cmd` et gardez la fenêtre ouverte.
 4. Ouvrez `http://127.0.0.1:8090/config.html` ou la configuration du site public.
 5. Choisissez l’identifiant du PC, la connexion vMix et le nombre d’écrans, puis
    appliquez un preset.
@@ -69,6 +69,17 @@ sources et leurs IDs vMix sont conservés.
 - [Signaler une vulnérabilité](SECURITY.md)
 
 Vérification : `npm test`. Construction du site statique : `npm run build`.
+
+Les pages et leurs ressources sont regroupées dans `public/` : `js/` pour les
+scripts, `css/` pour les styles, `assets/` pour les images et `vendor/` pour jQuery.
+Le serveur conserve les mêmes adresses de pages et les liens de rappel vMix.
+`desktop/` contient l’application Windows, `scripts/` les outils de construction,
+et `tests/` les tests. `dist/` et `release/` sont des résultats générés, ignorés
+par Git. Les dépendances installées avec `npm ci` servent au développement de
+l’application Windows ; le serveur local fonctionne sans elles.
+Le lanceur depuis les sources est dans `scripts/start-openmultiview.cmd`.
+L’hébergement Docker facultatif est regroupé dans `deploy/docker/`.
+L’exécutable Windows et GitHub Pages fonctionnent sans ces outils.
 
 Projet communautaire distribué sous [licence MIT](LICENSE). Les notices de
 tiers sont conservées dans [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

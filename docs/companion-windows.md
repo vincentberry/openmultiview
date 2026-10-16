@@ -5,6 +5,10 @@ Elle embarque Electron, Chromium, Node.js, l’interface, les images, les langue
 et le guide. Elle fonctionne sans connexion Internet, sans Node.js installé
 et sans navigateur externe pour utiliser l’application.
 
+Le lanceur `scripts/start-openmultiview.cmd` sert uniquement au lancement
+depuis les sources avec Node.js. L’exécutable embarque déjà son serveur.
+Les fichiers de `deploy/docker/` proposent un hébergement statique distinct.
+
 vMix doit être ouvert et accessible sur le PC ou le réseau local pour lire ses
 sources et appliquer les dispositions. L’application ne télécharge aucun
 composant au démarrage. Les seuls appels réseau automatiques autorisés servent

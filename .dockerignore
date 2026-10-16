@@ -4,10 +4,12 @@
 .env.*
 !.env.example
 docs
-deploy.sh
-Dockerfile
-docker-compose.yml
+deploy/docker/Dockerfile
+deploy/docker/docker-compose.yml
 README*
 dist
+release
+desktop
+tests
 node_modules
 *.log

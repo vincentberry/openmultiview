@@ -28,7 +28,7 @@ function openExternal(url) {
 function createWindow(url = origin + '/config.html', primary = false) {
     const win = new BrowserWindow({
         width: 1440, height: 940, minWidth: 760, minHeight: 620, show: false,
-        title: 'OpenMultiview · Version hors ligne', backgroundColor: '#101b25', icon: path.join(root, 'favicon.ico'),
+        title: 'OpenMultiview · Version hors ligne', backgroundColor: '#101b25', icon: path.join(root, 'public/favicon.ico'),
         autoHideMenuBar: true,
         webPreferences: {nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, allowRunningInsecureContent: false, spellcheck: false, offscreen: smoke}
     });
@@ -76,7 +76,7 @@ async function checkOfflineWindow(win) {
                 document.querySelector('#savePreset').click();
                 if(!Array.from(document.querySelector('#savedPresets').options).some(option => option.text === 'Offline smoke test')) throw new Error('Preset save failed');
             }
-            const access = await fetch('/connection.js');
+            const access = await fetch('/js/connection.js');
             if(!access.ok) throw new Error('Missing packaged script');
             return {templates: document.querySelectorAll('#layoutGallery .layout-choice').length, title: document.title};
         })()`);
@@ -158,7 +158,7 @@ else {
         ]));
         mainWindow = createWindow(origin + '/config.html', true);
         if(smoke) return checkOfflineWindow(mainWindow);
-        tray = new Tray(nativeImage.createFromPath(path.join(root, 'favicon.ico')));
+        tray = new Tray(nativeImage.createFromPath(path.join(root, 'public/favicon.ico')));
         tray.setToolTip('OpenMultiview · Application hors ligne');
         tray.setContextMenu(Menu.buildFromTemplate([
             {label: 'Ouvrir OpenMultiview', click: showMain},

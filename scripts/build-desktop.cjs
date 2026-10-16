@@ -2,7 +2,7 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 const crypto = require('node:crypto');
 const {build} = require('electron-builder');
-const {publicFiles} = require('./build-public.cjs');
+const {publicFiles, localFiles, noticeFiles} = require('./web-files.cjs');
 const root = path.resolve(__dirname, '..');
 const releaseName = process.env.MULTIVIEW_RELEASE_NAME || 'desktop';
 if(!/^[a-z0-9_-]+$/i.test(releaseName)) throw new Error('Invalid release directory name.');
@@ -15,9 +15,10 @@ async function main() {
         config: {
             appId: 'io.github.vincentberry.openmultiview', productName: 'OpenMultiview',
             directories: {output}, asar: true, npmRebuild: false,
-            files: [...publicFiles, 'assets/social-card.html', 'server.js', 'desktop/main.cjs', 'desktop/policy.cjs', 'package.json'],
+            files: [...publicFiles, ...localFiles].map(name => 'public/' + name).concat(noticeFiles,
+                ['server.js', 'scripts/web-files.cjs', 'desktop/main.cjs', 'desktop/policy.cjs', 'package.json']),
             extraMetadata: {main: 'desktop/main.cjs'},
-            win: {target: [{target: 'portable', arch: ['x64']}], icon: 'assets/openmultiview-logo.png', signExecutable: false},
+            win: {target: [{target: 'portable', arch: ['x64']}], icon: 'public/assets/openmultiview-logo.png', signExecutable: false},
             portable: {artifactName: 'OpenMultiview-Offline.exe'}
         }
     });

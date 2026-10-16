@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
-const M = require('../multiview-model');
+const M = require('../public/js/multiview-model');
 
 test('XML zero-based layers map to vMix one-based shortcut numbers', () => {
     assert.equal(M.layerNumber('0', 0), 1);
@@ -360,7 +360,7 @@ test('local PC bridge survives restart, isolates PCs and rejects stale writes', 
         assert.equal((await put(base, config, 'https://external.example')).status, 403);
         assert.equal((await fetch(base + '/server.js')).status, 404);
         assert.equal((await fetch(base + '/config.html')).status, 200);
-        assert.equal((await fetch(base + '/config.css?v=20261013-bindings')).status, 200);
+        assert.equal((await fetch(base + '/css/config.css?v=20261013-bindings')).status, 200);
         await new Promise(resolve => server.close(resolve));
         base = await start();
         assert.deepEqual(await fetch(base + '/control-api?PC=test').then(r => r.json()), config);

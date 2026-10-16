@@ -1,6 +1,6 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const M = require('../multiview-model');
+const M = require('../public/js/multiview-model');
 
 test('per-screen themes round trip with different palettes and custom layer settings', () => {
     const screens = [

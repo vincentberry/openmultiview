@@ -1,5 +1,5 @@
 /* Keep application resources offline; only vMix API traffic may leave the app origin. */
-const {addressSpace} = require('../connection');
+const {addressSpace} = require('../public/js/connection');
 
 function localDevice(url) {
     return !!addressSpace(url.href) || /^[a-z0-9-]+$/i.test(url.hostname);

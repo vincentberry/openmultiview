@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const M = require('../multiview-model');
+const M = require('../public/js/multiview-model');
 
 // Synthetic IDs only: no production configuration is included in the repository.
 const first = '00000000-0000-4000-8000-000000000001';
@@ -42,10 +42,10 @@ function viewer(href, {stored = {}, remote = null, studio = false} = {}) {
         setInterval: () => 0, setTimeout: () => 0, clearTimeout() {},
         fetchWithTimeout: async url => {calls.push(url); return {ok: true, json: async () => remote};}
     });
-    vm.runInContext(fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8'), scope);
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js/viewer.js'), 'utf8'), scope);
     // The viewer's bridge is exercised without the unrelated API polling timer.
     scope.fetchWithTimeout = async url => {calls.push(url); return {ok: true, json: async () => remote};};
-    if(studio) vm.runInContext(fs.readFileSync(path.join(__dirname, '../studio.js'), 'utf8'), scope);
+    if(studio) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js/config.js'), 'utf8'), scope);
     return {scope, calls, warnings, storage, recalled: () => M.unpack(JSON.parse(M.urlParameters(attributes.get('#configureLink:href')).get('Config')))};
 }
 
@@ -359,7 +359,7 @@ test('compressed browser URLs restore Unicode settings in a fresh viewer without
 });
 
 test('compressed browser URLs keep a realistic 16-source navigation request within the vMix limit', async () => {
-    const B = require('../multiview-builder');
+    const B = require('../public/js/multiview-builder');
     const {fakeVmix} = require('./helpers/fake-vmix.cjs');
     const api = fakeVmix();
     api.inputs.forEach((i, n) => i.key = '00000000-0000-4000-8000-' + String(n).padStart(12, '0'));

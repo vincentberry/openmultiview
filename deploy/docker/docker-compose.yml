@@ -3,8 +3,8 @@ name: multiview-vmix
 services:
   web:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
     image: multiview-vmix-web:latest
     restart: unless-stopped
     expose:

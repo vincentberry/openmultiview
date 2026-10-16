@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const M = require('../../multiview-model');
+const M = require('../../public/js/multiview-model');
 function fakeVmix(count = 16) {
     const inputs = Array.from({length: count}, (_, i) => ({key: 'camera-' + (i + 1), number: i + 1, title: i === 0 ? 'PVW' : i === 1 ? 'PGM' : 'CAM ' + (i + 1), type: 'Capture', layers: []}));
     const calls = [];

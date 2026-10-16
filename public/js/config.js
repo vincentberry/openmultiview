@@ -768,7 +768,7 @@
     }
     async function command(functionName, parameters) {
         const query = new URLSearchParams({Function: functionName, ...parameters});
-        if(functionName === 'BrowserNavigate' && query.toString().length > 7000) throw new Error('URL trop longue pour vMix. Lancez start-openmultiview.cmd sur le PC vMix pour utiliser une URL courte et conserver les réglages.');
+        if(functionName === 'BrowserNavigate' && query.toString().length > 7000) throw new Error('URL trop longue pour vMix. Lancez scripts/start-openmultiview.cmd sur le PC vMix pour utiliser une URL courte et conserver les réglages.');
         let response;
         try { response = await fetchWithTimeout('http://' + state.host + ':' + state.port + '/api/?' + query); }
         catch(error) {
