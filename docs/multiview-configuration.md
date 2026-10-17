@@ -31,6 +31,13 @@ Le thème est enregistré dans les modèles, le compagnon local et les URL de
 rappel (`Theme` et `Config`). Les anciens liens sans thème conservent le rendu
 classique, y compris le réglage audio historique des sorties.
 
+Le troisième style, **Tally latéraux**, ajoute des voyants de part et d’autre
+du nom : **Preview à gauche, Program à droite**. Chaque voyant allumé porte
+le numéro de son mix. Un input peut afficher plusieurs voyants, y compris
+Preview et Program simultanément. Le bandeau conserve les positions de texte
+et le fond transparent réglés pour la vignette ; les deux autres styles restent
+disponibles.
+
 Dans la même carte, **Texte de toutes les vignettes** règle la position du texte,
 son fond et sa taille pour tous les écrans du PC. Cliquez **Appliquer à tous les
 écrans** pour remplacer ces trois réglages sur les vignettes existantes. Les
@@ -56,6 +63,46 @@ vous pouvez conserver le repère du haut en masquant le bandeau du bas, ou
 l’inverse. Les deux thèmes le prennent en charge, et le choix est mémorisé dans
 les modèles et les URL. Sans modification, les anciennes configurations restent
 sans repère en Classique et avec repère en OpenMultiview.
+
+### Tally des mix et sources imbriquées
+
+Dans **Disposition → Tally des mix de cet écran**, les mix détectés dans l’API
+apparaissent automatiquement. Activez ou désactivez chacun et choisissez ses
+couleurs Preview et Program. **Configurer ce mix** permet aussi de préparer
+un mix absent de l’API. Les couleurs sont propres à cet écran et s’appliquent
+aux trois styles. **Couleurs par défaut** restaure la palette du style en
+conservant les activations. Sans couleur imposée au Mix 1, les couleurs
+personnalisées de chaque vignette restent prioritaires pour ce mix.
+
+Dans **Sources & layers → Tally & cadre → Mix suivi par le tally**, choisissez
+tous les mix activés ou un seul mix. Un mix désactivé sur l’écran reste ignoré.
+Le cadre et le nom prennent la couleur Program avant Preview, puis celle du mix
+au numéro le plus bas. Le style Tally latéraux affiche tous les états retenus
+à côté du nom, avec leurs couleurs respectives.
+
+Le tally suit les sources effectivement présentes dans les layers actifs d’une
+composition et dans la sortie d’un Mix imbriqué. Par exemple, si le programme
+principal contient une composition avec le Mix 2, la caméra au programme du
+Mix 2 est aussi au programme du Mix 1. Un changement dans le Mix 2 met à jour
+les deux tally. Sa source Preview seule ne devient pas Program. Les layers
+désactivés ou explicitement invisibles sont ignorés, et les références en boucle
+sont interrompues. Les overlays actifs du mix sont également pris en compte.
+
+### Safe areas et cadrage
+
+Dans **Disposition → Safe areas & cadrage**, activez les repères pour cet écran.
+Les zones d’action et de titres se règlent séparément, avec des marges en
+pourcentage depuis chaque bord de l’image. Les préréglages **5 % / 10 %** et
+**3,5 % / 5 %** servent de points de départ ; les marges restent modifiables.
+Vous pouvez ajouter une croix centrale et un cadre de ratio **4:3, 1:1, 9:16
+ou 2.39:1**, puis régler la couleur, l’opacité, l’épaisseur et le type de trait.
+
+Les repères sont visibles dans le plan et dans l’habillage envoyé à vMix.
+Ils restent indépendants du nom, du cadre et du tally de la vignette. Pour en
+masquer certains, utilisez **Sources & layers → Tally & cadre → Repères safe
+area → Masqués sur cette vignette**. Les safe areas sont désactivées par défaut.
+Les réglages de cadrage, les palettes et le mix suivi par chaque vignette sont
+conservés dans les modèles, les sauvegardes locales et les liens de rappel.
 
 ## Démarrage sur le PC vMix
 

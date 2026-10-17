@@ -47,6 +47,8 @@
             }),
             layout: previous.layout || [],
             ...(vMixSettings.theme && vMixSettings.theme !== 'classic' || previous.theme ? {theme: vMixSettings.theme} : {}),
+            ...(vMixSettings.tallyMixes.length ? {tallyMixes: M.clone(vMixSettings.tallyMixes)} : {}),
+            ...(previous.safeArea || query.has('SafeArea') || vMixSettings.safeArea.enabled ? {safeArea: M.clone(vMixSettings.safeArea)} : {}),
             ...(vMixSettings.hideOutputAudioByDefault ? {hideOutputAudioByDefault: true} : {}),
             ...(previous.spacing !== undefined ? {spacing: previous.spacing} : {}),
             ...(previous.managed ? {managed: previous.managed} : {}),
@@ -59,6 +61,14 @@
     catch (_) { /* Legacy parameters remain available. */ }
     const hasLegacy = ['Input', 'Inputs', 'Input2', 'Settings', 'MaskSettings'].some(name => query.has(name));
     vMixSettings.theme = M.themes.some(t => t.id === query.get('Theme')) ? query.get('Theme') : hasLegacy ? 'classic' : 'openmultiview';
+    for(const [parameter, field] of [['TallyMixes', 'tallyMixes'], ['SafeArea', 'safeArea']]) {
+        try {
+            if(!query.has(parameter)) continue;
+            const screen = {...M.screen(), [field]: JSON.parse(query.get(parameter))};
+            M.validate({version: 1, pc: 'url', host: '127.0.0.1', port: '8088', screens: [screen]});
+            vMixSettings[field] = field === 'safeArea' ? M.safeAreaFor(screen) : screen[field];
+        } catch(error) { console.warn('Paramètre ' + parameter + ' invalide', error); }
+    }
     const legacyOnly = hasLegacy && !fromURL && !query.get('PC');
     const legacyStandalone = legacyOnly && !control;
     vMixSettings.hideOutputAudioByDefault = legacyOnly;
@@ -190,6 +200,8 @@
         }
         const s = state.screens[screenIndex];
         vMixSettings.theme = M.themeFor(s);
+        vMixSettings.tallyMixes = M.clone(s.tallyMixes || []);
+        vMixSettings.safeArea = M.safeAreaFor(s);
         vMixSettings.textStyle = state.textStyle;
         vMixSettings.roleBadges = state.roleBadges;
         vMixSettings.IP = state.host;
@@ -390,7 +402,7 @@
         <div class="workspace"><main>
         <section class="studio-view" id="view-layouts" role="tabpanel" aria-labelledby="tab-layouts"><section class="studio-card theme-card" aria-labelledby="themeHeading"><div class="section-intro"><span class="section-kicker">01 / HABILLAGE</span><h2 id="themeHeading">Le style de cet écran</h2><p>Un thème par écran, conservé dans vos modèles et vos URL.</p></div><div id="themeChoices" class="theme-choices" role="group" aria-label="Thème du multiview"></div><p class="theme-help">Appliqué immédiatement aux pages connectées. Vos réglages de texte, d’audio et vos couleurs personnalisées sont conservés.</p>
         <label class="role-badge-control"><input type="checkbox" id="allRoleBadges"><span><strong>Afficher PROGRAM/PREVIEW en haut</strong><small>Applique ce choix à tous les écrans de ce PC. Chaque layer peut ensuite être réglé séparément.</small></span></label>
-        <fieldset class="shared-text-settings"><legend>Texte de toutes les vignettes</legend><p>Réglages communs à tous les écrans de ce PC, en Classique comme en OpenMultiview.</p><div class="style-grid">
+        <fieldset class="shared-text-settings"><legend>Texte de toutes les vignettes</legend><p>Réglages communs à tous les écrans de ce PC, quel que soit le style.</p><div class="style-grid">
         <label class="style-field">Position du texte<select id="sharedTitlePosition"><option value="overlay-bottom">Sur l’image, en bas</option><option value="overlay-top">Sur l’image, en haut</option><option value="below">Sous la vignette</option><option value="above">Au-dessus</option></select></label>
         <label class="style-field">Fond du texte<select id="sharedTitleBackground"><option value="true">Avec fond</option><option value="false">Transparent</option></select></label>
         <label class="style-field">Taille du texte<input id="sharedTitleFontSize" type="number" min="8" max="100" step="1"></label></div>
@@ -476,6 +488,8 @@
     };
     choice('titlePosition', 'Position du texte', [['overlay-bottom', 'Sur l’image, en bas'], ['overlay-top', 'Sur l’image, en haut'], ['below', 'Sous la vignette'], ['above', 'Au-dessus']]);
     choice('titleBackground', 'Fond du texte', [['true', 'Avec fond'], ['false', 'Transparent']]);
+    choice('tallyMix', 'Mix suivi par le tally', [[0, 'Tous les mix activés']], 'frame');
+    choice('safeArea', 'Repères safe area', [['true', 'Réglages de cet écran'], ['false', 'Masqués sur cette vignette']], 'frame');
     choice('vuPosition', 'Position du vumètre', [['inside-left', 'Dans l’image, à gauche'], ['inside-right', 'Dans l’image, à droite'], ['outside-left', 'À gauche de la vignette'], ['outside-right', 'À droite de la vignette']], 'audio');
     const styleLabels = {borderWidth: 'Épaisseur du cadre', borderColor: 'Couleur du cadre', previewColor: 'Tally preview', programColor: 'Tally programme'};
     [{setting: 'titleFontSize', label: 'Taille du texte', type: 'number', min: 8, max: 100}, ...getLayerStyleControls()].forEach(item => {
@@ -494,7 +508,83 @@
         $('#sharedTitlePosition').val(text.titlePosition);
         $('#sharedTitleBackground').val(String(text.titleBackground));
         $('#sharedTitleFontSize').val(text.titleFontSize);
+        renderMixControls();
+        renderSafeAreaControls();
     }
+    $('.theme-card').after(`<section class="studio-card tally-mix-card"><div class="section-intro"><h2>Tally des mix de cet écran</h2><p>Chaque mix a ses couleurs Preview et Program. Les inputs présents dans ses layers et ses mix imbriqués suivent le tally.</p></div>
+        <div id="tallyMixRows" class="tally-mix-rows"></div><div class="mix-actions"><label class="style-field">Mix à configurer<select id="addTallyMix"></select></label><button id="configureTallyMix" type="button">Configurer ce mix</button><button id="resetTallyMixes" type="button">Couleurs par défaut</button></div>
+        <small>Dans le style Tally latéraux, Preview est à gauche du nom et Program à droite. Le numéro du voyant indique le mix. Le cadre et le nom donnent priorité au programme, puis au premier mix.</small></section>
+        <section class="studio-card safe-area-card"><div class="section-intro"><h2>Safe areas & cadrage</h2><p>Repères de cadrage pour les vignettes de cet écran.</p></div>
+        <label class="check-field"><input type="checkbox" data-safe-area="enabled">Afficher les safe areas</label>
+        <div class="style-grid"><label class="style-field">Préréglage des marges<select id="safeAreaPreset"><option value="custom">Personnalisé</option><option value="5,10">Action 5 % / titres 10 %</option><option value="3.5,5">Action 3,5 % / titres 5 %</option></select></label>
+        <label class="style-field">Cadre de ratio<select data-safe-area="aspect"><option value="none">Aucun</option><option value="4:3">4:3</option><option value="1:1">1:1</option><option value="9:16">9:16</option><option value="2.39:1">2.39:1</option></select></label>
+        <label class="check-field"><input type="checkbox" data-safe-area="action">Zone d’action</label><label class="style-field">Marge action (%)<input type="number" min="0" max="49" step="0.5" data-safe-area="actionInset"></label>
+        <label class="check-field"><input type="checkbox" data-safe-area="title">Zone de titres</label><label class="style-field">Marge titres (%)<input type="number" min="0" max="49" step="0.5" data-safe-area="titleInset"></label>
+        <label class="check-field"><input type="checkbox" data-safe-area="center">Croix centrale</label><label class="style-field">Couleur des repères<input type="color" data-safe-area="color"></label>
+        <label class="style-field">Opacité (%)<input type="number" min="0" max="100" step="1" data-safe-area="opacity"></label><label class="style-field">Épaisseur (px)<input type="number" min="1" max="5" step="1" data-safe-area="lineWidth"></label>
+        <label class="style-field">Trait des repères<select data-safe-area="lineStyle"><option value="dashed">Pointillé</option><option value="solid">Continu</option></select></label></div>
+        <small>Les marges sont mesurées depuis chaque bord de l’image. Chaque vignette peut masquer ces repères dans Sources & layers.</small></section>`);
+    for(let number = 1; number <= M.MAX_MIXES; number++) $('#addTallyMix').append(new Option('Mix ' + number, number));
+    let mixControlsSignature;
+    function renderMixControls() {
+        const screen = state.screens[screenIndex];
+        const palettes = M.tallyMixesFor(screen, vMixSettings.mixes);
+        const signature = JSON.stringify([screenIndex, palettes, vMixSettings.mixes.map(m => m.number)]);
+        if(signature === mixControlsSignature) return;
+        mixControlsSignature = signature;
+        const rows = $('#tallyMixRows').empty();
+        palettes.forEach(palette => {
+            const row = $('<div class="tally-mix-row">').attr('data-mix', palette.mix);
+            $('<label class="check-field">').append($('<input type="checkbox" data-mix-field="enabled">').prop('checked', palette.enabled), $('<strong>').text('Mix ' + palette.mix)).appendTo(row);
+            for(const [field, label] of [['previewColor', 'Preview'], ['programColor', 'Program']]) $('<label class="mix-color">').text(label).append($('<input type="color">').attr({'data-mix-field': field, 'aria-label': label + ' · Mix ' + palette.mix}).val(palette[field])).appendTo(row);
+            if(!vMixSettings.mixes.some(m => m.number === palette.mix)) row.append($('<small>').text('Absent de l’API'));
+            row.appendTo(rows);
+        });
+        const select = $('[data-tile-style="tallyMix"]').empty().append(new Option('Tous les mix activés', '0'));
+        const selected = editableLayers().find(l => l.layerKey === vMixSettings.selectedInputKey);
+        const current = selected ? getTileSettings(selected.layerKey, selected.inputKey).tallyMix : 0;
+        const numbers = [...new Set([...palettes.map(p => p.mix), ...(current ? [current] : [])])].sort((a, b) => a - b);
+        numbers.forEach(number => select.append(new Option('Mix ' + number, number)));
+        select.val(String(current));
+    }
+    function saveScreenDisplay(field, value) {
+        if(building || applying) return;
+        publish();
+        state.screens[screenIndex][field] = M.clone(value);
+        state.updated = M.nextUpdate(state.updated);
+        persist(); loadScreen();
+    }
+    $('#tallyMixRows').on('change', '[data-mix-field]', function() {
+        const number = Number($(this).closest('[data-mix]').attr('data-mix'));
+        const palettes = M.clone(state.screens[screenIndex].tallyMixes || []);
+        let palette = palettes.find(p => p.mix === number);
+        if(!palette) { palette = M.mixPalette(number, M.themeFor(state.screens[screenIndex])); palettes.push(palette); }
+        palette[this.dataset.mixField] = this.type === 'checkbox' ? this.checked : this.value;
+        saveScreenDisplay('tallyMixes', palettes.sort((a, b) => a.mix - b.mix));
+    });
+    $('#configureTallyMix').on('click', () => {
+        const palettes = M.clone(state.screens[screenIndex].tallyMixes || []), number = Number($('#addTallyMix').val());
+        if(!palettes.some(p => p.mix === number)) palettes.push(M.mixPalette(number, M.themeFor(state.screens[screenIndex])));
+        saveScreenDisplay('tallyMixes', palettes.sort((a, b) => a.mix - b.mix));
+    });
+    $('#resetTallyMixes').on('click', () => saveScreenDisplay('tallyMixes', (state.screens[screenIndex].tallyMixes || []).map(p => ({...M.mixPalette(p.mix, M.themeFor(state.screens[screenIndex])), enabled: p.enabled}))));
+    function renderSafeAreaControls() {
+        const safe = M.safeAreaFor(state.screens[screenIndex]);
+        $('[data-safe-area]').each(function() { this.type === 'checkbox' ? $(this).prop('checked', safe[this.dataset.safeArea]) : $(this).val(safe[this.dataset.safeArea]); });
+        const preset = safe.actionInset + ',' + safe.titleInset;
+        $('#safeAreaPreset').val(['5,10', '3.5,5'].includes(preset) ? preset : 'custom');
+    }
+    $('.safe-area-card').on('change', '[data-safe-area]', function() {
+        const safe = M.safeAreaFor(state.screens[screenIndex]);
+        safe[this.dataset.safeArea] = this.type === 'checkbox' ? this.checked : this.type === 'number' ? Number(this.value) : this.value;
+        if(!M.validSafeArea(safe)) { renderSafeAreaControls(); notice('Réglages safe area invalides'); return; }
+        saveScreenDisplay('safeArea', safe);
+    });
+    $('#safeAreaPreset').on('change', function() {
+        if(this.value === 'custom') return;
+        const [actionInset, titleInset] = this.value.split(',').map(Number);
+        saveScreenDisplay('safeArea', {...M.safeAreaFor(state.screens[screenIndex]), enabled: true, action: true, title: true, actionInset, titleInset});
+    });
     $('#allRoleBadges').on('change', function() {
         if(building || applying) return;
         publish();
@@ -638,6 +728,8 @@
         B.candidates(vMixInputs, s).filter(i => i.key !== layer.sourceKey).forEach(input => source.append(new Option('Entrée ' + input.number + ' · ' + (input.title || input.key), input.key, false, !blank && input.key === layer.inputKey)));
         if(blank) source.val('');
         const settings = getTileSettings(layer.layerKey, layer.inputKey);
+        const tallySelect = $('[data-tile-style="tallyMix"]');
+        if(settings.tallyMix && !tallySelect.find('option[value="' + settings.tallyMix + '"]').length) tallySelect.append(new Option('Mix ' + settings.tallyMix, settings.tallyMix));
         const checks = {tileEnabled: 'enabled', tileTally: 'tally', tileName: 'name', tileRoleBadge: 'roleBadge', tileVU: 'vu', tileTimer: 'timer', tileFrame: 'frame'};
         Object.entries(checks).forEach(([id, key]) => $('#' + id).prop('checked', settings[key]));
         $('[data-tile-style]').each(function() { $(this).val(String(settings[this.dataset.tileStyle])); });
@@ -666,7 +758,7 @@
     });
     panel.on('change', '[data-tile-style]', function() {
         const name = this.dataset.tileStyle;
-        const value = name === 'titleBackground' ? this.value === 'true' : this.type === 'number' ? Number(this.value) : this.value;
+        const value = ['titleBackground', 'safeArea'].includes(name) ? this.value === 'true' : this.type === 'number' || name === 'tallyMix' ? Number(this.value) : this.value;
         updateSelectedTileSetting(name, value);
     });
     function drawPreview() {
@@ -679,14 +771,18 @@
             const settings = getTileSettings(o.layerKey, o.inputKey);
             const displayName = getLayerDisplayName(o);
             const monitorRole = getLayerMonitorRole(M.resolveSource(vMixInputs, o.inputKey));
-            const tally = M.tallyState(settings, o.inputKey, vMixSettings.previewKey, vMixSettings.programKey);
+            const tally = getLayerTally(o);
+            const activeColor = tally.state ? tally[tally.state][0].color : '#ffffff';
             const frame = settings.enabled && settings.frame ? Math.max(0, Number(settings.borderWidth) || 0) : 0;
-            const button = $('<button type="button" class="preview-layer">').addClass(tileSettingsClasses(o)).addClass(tally)
+            const button = $('<button type="button" class="preview-layer">').addClass(tileSettingsClasses(o)).addClass(tally.state)
                 .css({width: o.zoomX + '%', height: o.zoomY + '%', left: (o.panX / 2 + 50 - o.zoomX / 2) + '%', top: (-o.panY / 2 + 50 - o.zoomY / 2) + '%',
                     '--preview-title-size': Math.max(5, Math.min(32, settings.titleFontSize * .32)) + 'px',
                     '--preview-frame-width': (frame ? Math.max(.5, frame * .32) : 0) + 'px', '--preview-frame-color': settings.borderColor,
-                    '--preview-tally-color': tally === 'program' ? settings.programColor : tally === 'preview' ? settings.previewColor : '#ffffff'})
-                .append($('<span class="preview-label" data-source-name>').text(displayName).prop('hidden', !settings.enabled || !settings.name))
+                    '--preview-tally-color': activeColor})
+                .append(generateSafeArea(o), $('<span class="preview-title-band">').append(
+                    $('<span class="layerTally layerTallyPreview">').html(generateTallyLights(tally, 'preview')),
+                    $('<span class="preview-label" data-source-name>').text(displayName).prop('hidden', !settings.enabled || !settings.name),
+                    $('<span class="layerTally layerTallyProgram">').html(generateTallyLights(tally, 'program'))))
                 .attr('data-role', o.role || '')
                 .attr('data-input-key', o.inputKey)
                 .attr({title: o.layerName + ' · ' + o.inputName + (displayName !== o.inputName ? ' → ' + displayName : ''), 'aria-label': 'Configurer la vignette ' + (n + 1) + ' · ' + displayName, 'aria-pressed': String(o.layerKey === vMixSettings.selectedInputKey)})
@@ -1060,7 +1156,8 @@
         // New inputs must appear in the picker even when existing layers stay
         // unchanged. The picker keeps its DOM when its source list is stable.
         renderScreenControls();
-        const signature = JSON.stringify([screenIndex, vMixSettings.previewKey, vMixSettings.programKey, editableLayers(), vMixInputs.map(i => [i.key, i.number, i.title, i.type])]);
+        renderMixControls();
+        const signature = JSON.stringify([screenIndex, vMixSettings.mixes, vMixSettings.tallyGraph.map(m => [m.number, [...m.preview], [...m.program]]), editableLayers(), vMixInputs.map(i => [i.key, i.number, i.title, i.type])]);
         if(signature !== controlLayersSignature) {
             controlLayersSignature = signature;
             renderSourceInputs(); renderLayerPicker(); renderLayerFields(); drawPreview();

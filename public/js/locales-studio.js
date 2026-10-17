@@ -337,6 +337,46 @@
         ['Entrée introuvable : (.*)', 'Input not found: $1', 'Entrada no encontrada: $1'],
         ['ID du multiview : (.*) · (\\d+) vignettes · Source HTML au layer 10 : (.*)', 'Multiview ID: $1 · $2 tiles · HTML source on layer 10: $3', 'ID del multiview: $1 · $2 miniaturas · Fuente HTML en el layer 10: $3']
     );
+    catalog.text.push(
+        ['Tally latéraux', 'Side tally', 'Tally laterales'],
+        ['Preview à gauche du nom, programme à droite. Un voyant par mix.', 'Preview to the left of the name, program to the right. One light per mix.', 'Preview a la izquierda del nombre, programa a la derecha. Un indicador por mix.'],
+        ['Réglages communs à tous les écrans de ce PC, quel que soit le style.', 'Shared settings for every screen on this PC, in every style.', 'Ajustes comunes a todas las pantallas de este PC, con cualquier estilo.'],
+        ['Tally des mix de cet écran', 'Mix tally for this screen', 'Tally de los mix de esta pantalla'],
+        ['Chaque mix a ses couleurs Preview et Program. Les inputs présents dans ses layers et ses mix imbriqués suivent le tally.', 'Each mix has its Preview and Program colors. Inputs in its layers and nested mixes follow the tally.', 'Cada mix tiene sus colores Preview y Program. Las entradas de sus layers y mix anidados siguen el tally.'],
+        ['Mix à configurer', 'Mix to configure', 'Mix a configurar'],
+        ['Configurer ce mix', 'Configure this mix', 'Configurar este mix'],
+        ['Couleurs par défaut', 'Default colors', 'Colores predeterminados'],
+        ['Absent de l’API', 'Missing from the API', 'Ausente de la API'],
+        ['Dans le style Tally latéraux, Preview est à gauche du nom et Program à droite. Le numéro du voyant indique le mix. Le cadre et le nom donnent priorité au programme, puis au premier mix.', 'In the Side tally style, Preview is left of the name and Program is right. The light number identifies the mix. The frame and name prioritize program, then the first mix.', 'En el estilo Tally laterales, Preview está a la izquierda del nombre y Program a la derecha. El número del indicador identifica el mix. El marco y el nombre priorizan programa y después el primer mix.'],
+        ['Mix suivi par le tally', 'Mix tracked by tally', 'Mix seguido por el tally'],
+        ['Tous les mix activés', 'All enabled mixes', 'Todos los mix activados'],
+        ['Repères safe area', 'Safe area guides', 'Guías de área segura'],
+        ['Réglages de cet écran', 'This screen’s settings', 'Ajustes de esta pantalla'],
+        ['Masqués sur cette vignette', 'Hidden on this tile', 'Ocultas en esta miniatura'],
+        ['Safe areas & cadrage', 'Safe areas & framing', 'Áreas seguras y encuadre'],
+        ['Repères de cadrage pour les vignettes de cet écran.', 'Framing guides for this screen’s tiles.', 'Guías de encuadre para las miniaturas de esta pantalla.'],
+        ['Afficher les safe areas', 'Show safe areas', 'Mostrar áreas seguras'],
+        ['Préréglage des marges', 'Margin preset', 'Preajuste de márgenes'],
+        ['Personnalisé', 'Custom', 'Personalizado'],
+        ['Action 5 % / titres 10 %', 'Action 5% / titles 10%', 'Acción 5 % / títulos 10 %'],
+        ['Action 3,5 % / titres 5 %', 'Action 3.5% / titles 5%', 'Acción 3,5 % / títulos 5 %'],
+        ['Cadre de ratio', 'Aspect ratio frame', 'Marco de relación de aspecto'],
+        ['Zone d’action', 'Action area', 'Área de acción'],
+        ['Zone de titres', 'Title area', 'Área de títulos'],
+        ['Marge action (%)', 'Action margin (%)', 'Margen de acción (%)'],
+        ['Marge titres (%)', 'Title margin (%)', 'Margen de títulos (%)'],
+        ['Croix centrale', 'Center cross', 'Cruz central'],
+        ['Couleur des repères', 'Guide color', 'Color de las guías'],
+        ['Opacité (%)', 'Opacity (%)', 'Opacidad (%)'],
+        ['Épaisseur (px)', 'Width (px)', 'Grosor (px)'],
+        ['Trait des repères', 'Guide line style', 'Estilo de las guías'],
+        ['Pointillé', 'Dashed', 'Discontinuo'],
+        ['Continu', 'Solid', 'Continuo'],
+        ['Les marges sont mesurées depuis chaque bord de l’image. Chaque vignette peut masquer ces repères dans Sources & layers.', 'Margins are measured from each image edge. Each tile can hide these guides in Sources & layers.', 'Los márgenes se miden desde cada borde de la imagen. Cada miniatura puede ocultar estas guías en Fuentes y layers.'],
+        ['Réglages safe area invalides', 'Invalid safe area settings', 'Ajustes de área segura no válidos']
+    );
+    catalog.patterns.push(['Thème Tally latéraux', 'Side tally theme', 'Tema Tally laterales']);
+    catalog.patterns.push(['Thème Tally latéraux appliqué à l’écran (\\d+)\\.', 'Side tally theme applied to screen $1.', 'Tema Tally laterales aplicado a la pantalla $1.']);
     catalog.patterns.push(['Dernière commande acceptée par vMix : (.*)', 'Last command accepted by vMix: $1', 'Último comando aceptado por vMix: $1']);
     const templateNames = ['Preset 1 · PVW / PGM + 8','Preset 2 · PGM / PVW à gauche + 8','Preset 3 · PVW / PGM + 6','Preset 4 · PGM / PVW à gauche + 6','Preset 5 · PGM + 5','Preset 6 · 8 sources + PGM','Preset 7 · PGM en haut à gauche + 12','Preset 8 · PVW en haut à droite + 12','Quad · 4 sources','Grille · 9 sources','Grille · 6 sources','Grille · 12 sources','Grille · 16 sources','Production · 2 + 8','Programme · 1 + 6','Régie · 2 écrans'];
     for(const name of templateNames) {

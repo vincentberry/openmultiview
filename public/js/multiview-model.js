@@ -14,12 +14,13 @@
     const LEGACY_SPACING = 13;
     const themes = [
         {id: 'classic', name: 'Classique', description: 'Libellés centrés, tally vert et rouge.'},
-        {id: 'openmultiview', name: 'OpenMultiview', description: 'Bandeaux bleu nuit, preview menthe et programme corail.'}
+        {id: 'openmultiview', name: 'OpenMultiview', description: 'Bandeaux bleu nuit, preview menthe et programme corail.'},
+        {id: 'tally-sides', name: 'Tally latéraux', description: 'Preview à gauche du nom, programme à droite. Un voyant par mix.'}
     ];
     const themeFor = s => themes.some(t => t.id === s.theme) ? s.theme : 'classic';
     const textFields = ['titlePosition', 'titleBackground', 'titleFontSize'];
     function tileDefaultsFor(theme = 'classic', textStyle, roleBadges) {
-        return {...tileDefaults, roleBadge: theme === 'openmultiview', ...(theme === 'openmultiview' ? {borderWidth: 2, borderColor: '#536b74', previewColor: '#66e5b5', programColor: '#ff7164'} : {}), ...textStyle,
+        return {...tileDefaults, roleBadge: theme !== 'classic', ...(theme !== 'classic' ? {borderWidth: 2, borderColor: '#536b74', previewColor: '#66e5b5', programColor: '#ff7164'} : {}), ...textStyle,
             ...(typeof roleBadges === 'boolean' ? {roleBadge: roleBadges} : {})};
     }
     function textStyleFor(config) {
@@ -44,6 +45,98 @@
     }
     function tallyState(settings, inputKey, previewKey, programKey) {
         return settings.tally && inputKey ? inputKey === programKey ? 'program' : inputKey === previewKey ? 'preview' : '' : '';
+    }
+    const MAX_MIXES = 16;
+    const validMix = number => Number.isInteger(number) && number >= 1 && number <= MAX_MIXES;
+    const validColor = color => typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color);
+    function mixNumberFor(input, inputs = []) {
+        if(!input || /^(Video|VideoList|Audio|AudioFile|Image|Photos)$/i.test(input.type || '')) return undefined;
+        if(validMix(input.mixNumber)) return input.mixNumber;
+        const match = [input.title, input.shortTitle].join(' ').match(/\bmix\s*(\d+)\b/i);
+        if(match && validMix(Number(match[1]))) return Number(match[1]);
+        if(/^Mix$/i.test(input.type || '')) {
+            const index = inputs.filter(i => /^Mix$/i.test(i.type || '')).findIndex(i => i.key === input.key);
+            if(index >= 0 && validMix(index + 2)) return index + 2;
+        }
+        return undefined;
+    }
+    function mixPalette(number, theme = 'classic') {
+        const defaults = tileDefaultsFor(theme);
+        const palettes = [['#49c4ff', '#ffbb55'], ['#c5a3ff', '#ff77bd'], ['#75e1dc', '#f1dc68']];
+        const colors = palettes[(number - 2) % palettes.length];
+        return {mix: number, enabled: true, previewColor: number === 1 ? defaults.previewColor : colors[0], programColor: number === 1 ? defaults.programColor : colors[1]};
+    }
+    function tallyMixesFor(screen, mixes = []) {
+        const numbers = [...new Set([1, ...mixes.map(m => m.number), ...(screen.tallyMixes || []).map(m => m.mix)])].filter(validMix).sort((a, b) => a - b);
+        return numbers.map(number => ({...mixPalette(number, themeFor(screen)), ...(screen.tallyMixes || []).find(m => m.mix === number)}));
+    }
+    // Build each bus once per XML update. Following a Mix uses its output even
+    // when that Mix is nested in the main preview. Cycles cannot light unrelated inputs.
+    function tallyGraph(inputs, mixes) {
+        const byKey = new Map(inputs.map(input => [input.key, input]));
+        const byMix = new Map(mixes.map(mix => [mix.number, mix]));
+        function descendants(keys) {
+            const found = new Set();
+            function visit(key) {
+                if(!key || found.has(key) || !byKey.has(key)) return;
+                found.add(key);
+                const input = byKey.get(key);
+                (input.layers || []).filter(layer => layer.enabled !== false && layer.opacity !== 0 && layer.position?.zoomX !== 0 && layer.position?.zoomY !== 0).forEach(layer => visit(layer.inputKey));
+                const mixNumber = mixNumberFor(input, inputs);
+                const monitor = /^(Mix|Output|Preview)$/i.test(input.type || '');
+                if(monitor) {
+                    const mix = byMix.get(mixNumber || 1);
+                    if(mix) {
+                        if(/^Preview$/i.test(input.type || '')) visit(mix.previewKey);
+                        else [mix.programKey, ...(mix.overlayKeys || [])].forEach(visit);
+                    }
+                }
+            }
+            keys.forEach(visit);
+            return found;
+        }
+        return mixes.map(mix => ({number: mix.number, preview: descendants([mix.previewKey]), program: descendants([mix.programKey, ...(mix.overlayKeys || [])])}));
+    }
+    function tallyFor(settings, inputKey, graph, palettes = []) {
+        const result = {state: '', preview: [], program: []};
+        if(!settings.tally || !inputKey) return result;
+        for(const bus of graph) {
+            if(settings.tallyMix && settings.tallyMix !== bus.number) continue;
+            const palette = palettes.find(p => p.mix === bus.number);
+            if(palette?.enabled === false) continue;
+            for(const state of ['preview', 'program']) if(bus[state].has(inputKey)) {
+                // Main Mix inherits each tile's custom colors until explicitly overridden.
+                const color = palette?.[state + 'Color'] || (bus.number === 1 ? settings[state + 'Color'] : mixPalette(bus.number)[state + 'Color']);
+                result[state].push({mix: bus.number, color});
+            }
+        }
+        result.state = result.program.length ? 'program' : result.preview.length ? 'preview' : '';
+        return result;
+    }
+    const safeAreaDefaults = {enabled: false, action: true, title: true, actionInset: 5, titleInset: 10,
+        center: false, aspect: 'none', color: '#ffffff', opacity: 65, lineWidth: 1, lineStyle: 'dashed'};
+    function safeAreaFor(screen) { return {...safeAreaDefaults, ...screen.safeArea}; }
+    function validSafeArea(settings) {
+        const s = {...safeAreaDefaults, ...settings};
+        return settings && typeof settings === 'object' && !Array.isArray(settings) && Object.keys(settings).every(key => Object.hasOwn(safeAreaDefaults, key)) &&
+            ['enabled', 'action', 'title', 'center'].every(key => typeof s[key] === 'boolean') &&
+            ['actionInset', 'titleInset'].every(key => Number.isFinite(s[key]) && s[key] >= 0 && s[key] < 50) &&
+            ['none', '4:3', '1:1', '9:16', '2.39:1'].includes(s.aspect) && validColor(s.color) &&
+            Number.isFinite(s.opacity) && s.opacity >= 0 && s.opacity <= 100 && Number.isFinite(s.lineWidth) && s.lineWidth >= 1 && s.lineWidth <= 5 && ['solid', 'dashed'].includes(s.lineStyle);
+    }
+    function safeAreaGuides(settings, imageRatio = 16 / 9) {
+        if(!settings.enabled) return [];
+        const guides = [];
+        for(const kind of ['action', 'title']) if(settings[kind]) {
+            const inset = settings[kind + 'Inset'];
+            guides.push({kind, x: inset, y: inset, w: 100 - inset * 2, h: 100 - inset * 2});
+        }
+        if(settings.aspect !== 'none') {
+            const [w, h] = settings.aspect.split(':').map(Number), ratio = w / h / imageRatio;
+            const width = Math.min(100, ratio * 100), height = Math.min(100, 100 / ratio);
+            guides.push({kind: 'aspect', x: (100 - width) / 2, y: (100 - height) / 2, w: width, h: height});
+        }
+        return guides;
     }
     function applyRoleBadges(config, enabled, inputs = []) {
         if(typeof enabled !== 'boolean') throw new Error('Réglage des repères invalide.');
@@ -278,6 +371,9 @@
             if (!Array.isArray(s.tiles) || !Array.isArray(s.extras) || !Array.isArray(s.layout)) throw new Error('Écran invalide');
             if(s.spacing !== undefined && !validSpacing(s.spacing)) throw new Error('Espacement invalide');
             if(s.theme !== undefined && !themes.some(t => t.id === s.theme)) throw new Error('Thème invalide');
+            if(s.safeArea !== undefined && !validSafeArea(s.safeArea)) throw new Error('Réglages safe area invalides');
+            if(s.tallyMixes !== undefined && (!Array.isArray(s.tallyMixes) || s.tallyMixes.length > MAX_MIXES ||
+                new Set(s.tallyMixes.map(m => m && m.mix)).size !== s.tallyMixes.length || s.tallyMixes.some(m => !m || !validMix(m.mix) || typeof m.enabled !== 'boolean' || !validColor(m.previewColor) || !validColor(m.programColor)))) throw new Error('Réglages tally des mix invalides');
             if(s.hideOutputAudioByDefault !== undefined && typeof s.hideOutputAudioByDefault !== 'boolean') throw new Error('Réglage audio par défaut invalide');
             if(s.videoInputs && (!Array.isArray(s.videoInputs) || s.videoInputs.some(k => typeof k !== 'string' || !validReference(k)))) throw new Error('Sources vidéo invalides');
             if(s.layerSources && (!Array.isArray(s.layerSources) || s.layerSources.some(r => !r || typeof r.parent !== 'string' || !validReference(r.parent) || !Number.isInteger(r.layer) || r.layer < 1 || r.layer > 10 || (r.source !== null && (typeof r.source !== 'string' || !validReference(r.source)))))) throw new Error('Affectations de layers invalides');
@@ -292,6 +388,8 @@
                 if (!t || typeof t.key !== 'string' || !t.value || typeof t.value !== 'object') throw new Error('Layer invalide');
                 Object.entries(t.value).forEach(([key, val]) => {
                     if (/Color$/.test(key) && !/^#[0-9a-f]{6}$/i.test(val)) throw new Error('Couleur invalide');
+                    if(key === 'tallyMix' && val !== 0 && !validMix(val)) throw new Error('Mix tally invalide');
+                    if(key === 'safeArea' && typeof val !== 'boolean') throw new Error('Réglage safe area du layer invalide');
                 });
             });
             s.layout.forEach(p => {
@@ -360,7 +458,7 @@
         const ratio = (100 - next) / (100 - previous);
         return layout.map(p => ({...p, zoomX: p.zoomX * ratio, zoomY: p.zoomY * ratio}));
     }
-    const tileDefaults = {enabled: true, tally: true, name: true, vu: true, timer: false, frame: true,
+    const tileDefaults = {enabled: true, tally: true, tallyMix: 0, safeArea: true, name: true, vu: true, timer: false, frame: true,
         titlePosition: 'overlay-bottom', titleBackground: true, titleFontSize: 22, vuPosition: 'inside-left',
         borderWidth: 3, borderColor: '#b4b4b4', previewColor: '#0de416', programColor: '#ff0000'};
     // Compact portable URLs: positions and extras otherwise repeat long property
@@ -371,7 +469,7 @@
             s.inputs, s.extras.map(e => extraFields.map(k => e[k] === undefined ? null : e[k])),
             s.tiles.map(t => [t.key, Object.fromEntries(Object.entries(t.value).filter(([k, v]) => k === 'vu' && s.hideOutputAudioByDefault === true || tileDefaultsFor(themeFor(s), config.textStyle, config.roleBadges)[k] !== v))]),
             s.layout.map(p => [p.source, p.layer, ...['zoomX', 'zoomY', 'panX', 'panY'].map(k => Math.round(p[k] * 100000) / 100000)]),
-            s.managed || null, s.videoInputs || [], (s.layerSources || []).map(r => [r.parent, r.layer, r.source]), s.spacing ?? null, s.hideOutputAudioByDefault ?? null, s.theme ?? null
+            s.managed || null, s.videoInputs || [], (s.layerSources || []).map(r => [r.parent, r.layer, r.source]), s.spacing ?? null, s.hideOutputAudioByDefault ?? null, s.theme ?? null, s.tallyMixes ?? null, s.safeArea ?? null
         ]), ...(config.textStyle ? {x: textFields.map(key => config.textStyle[key])} : {}), ...(typeof config.roleBadges === 'boolean' ? {b: config.roleBadges} : {})};
     }
     function unpack(value) {
@@ -384,7 +482,8 @@
                 layout: s[3].map(p => ({source: p[0], layer: p[1], zoomX: p[2], zoomY: p[3], panX: p[4], panY: p[5]})),
                 ...(s[4] ? {managed: s[4]} : {}), ...(s[5] && s[5].length ? {videoInputs: s[5]} : {}),
                 ...(s[6] && s[6].length ? {layerSources: s[6].map(r => ({parent: r[0], layer: r[1], source: r[2]}))} : {}),
-                ...(s[7] != null ? {spacing: s[7]} : {}), ...(s[8] != null ? {hideOutputAudioByDefault: s[8]} : {}), ...(s[9] != null ? {theme: s[9]} : {})}))});
+                ...(s[7] != null ? {spacing: s[7]} : {}), ...(s[8] != null ? {hideOutputAudioByDefault: s[8]} : {}), ...(s[9] != null ? {theme: s[9]} : {}),
+                ...(s[10] != null ? {tallyMixes: s[10]} : {}), ...(s[11] != null ? {safeArea: s[11]} : {})}))});
     }
     function legacyPC(query) {
         // Unnamed old links belong to their own URL, never to the default regie PC.
@@ -476,6 +575,8 @@
             target.search = connection.map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
             return target.href;
         }
+        if(s.tallyMixes) connection.push(['TallyMixes', JSON.stringify(s.tallyMixes)]);
+        if(s.safeArea) connection.push(['SafeArea', JSON.stringify(s.safeArea)]);
         // Old viewers read contributor inputs directly rather than the root's groups.
         const refs = s.managed ? (s.managed.sources.length > 9 ? s.managed.parts.slice(0, Math.ceil(s.managed.sources.length / 10)) : [s.managed.root]) : s.inputs;
         const sourceList = refs.map(ref => {
@@ -521,6 +622,7 @@
     }
     const api = {clone, screen, validate, templates, templateFrames, positions, resizeSpacing, spacingFor, DEFAULT_SPACING, LEGACY_SPACING, pack, unpack, legacyPC, recallURL, browserRecallURL, safeURL, urlParameters, MAX_REQUEST_TARGET, layerNumber, MAX_SCREENS, HTML_LAYER, themes, themeFor, tileDefaultsFor, changeTheme, textStyleFor, applyTextStyle, tallyState, applyRoleBadges,
         parseSourceReference, resolveSource, isBrowser, isGeneratedMultiview, collectLayers, role, audioRoute, audioLevels, nextUpdate, isLoopbackURL, syncBases, PUBLIC_ORIGINS,
+        MAX_MIXES, mixNumberFor, mixPalette, tallyMixesFor, tallyGraph, tallyFor, safeAreaDefaults, safeAreaFor, safeAreaGuides, validSafeArea,
         compose, localPosition, migrateTileSettings, layerKey, activeLayersFor, videoLayersFor, layoutFor, configurableLayers};
     if (typeof module !== 'undefined') module.exports = api;
     else root.MultiviewModel = api;

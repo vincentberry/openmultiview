@@ -23,6 +23,10 @@ var vMixSettings = {
     layerLayout: [],
     generatedInputs: [],
     layerSources: [],
+    mixes: [],
+    tallyGraph: [],
+    tallyMixes: [],
+    safeArea: MultiviewModel.safeAreaFor({}),
     hideOutputAudioByDefault: false,
     lastApiSuccess: 0,
     selectedInputKey: "",
@@ -372,6 +376,48 @@ function getLayerStyleVariables(overlay){
     ].join("; ") + ";";
 }
 
+function getLayerTally(overlay){
+    return MultiviewModel.tallyFor(getTileSettings(overlay.layerKey, overlay.inputKey), overlay.inputKey, vMixSettings.tallyGraph, vMixSettings.tallyMixes);
+}
+
+function generateTallyLights(tally, state){
+    return tally[state].length ? tally[state].map(function(light){
+        return '<b style="--tally-light-color:' + escapeHTML(light.color) + '" title="' + (state === 'preview' ? 'Preview' : 'Program') + ' · Mix ' + light.mix + '">' + light.mix + '</b>';
+    }).join('') : '<b class="tally-idle">' + (state === 'preview' ? 'PVW' : 'PGM') + '</b>';
+}
+
+function generateSafeArea(overlay){
+    var settings = vMixSettings.safeArea;
+    if(!settings.enabled || !getTileSettings(overlay.layerKey, overlay.inputKey).safeArea) return '';
+    return '<div class="safe-area" aria-hidden="true" style="--safe-area-color:' + settings.color + ';--safe-area-opacity:' + settings.opacity / 100 + ';--safe-area-width:' + settings.lineWidth + 'px;--safe-area-style:' + settings.lineStyle + '">' +
+        MultiviewModel.safeAreaGuides(settings, 16 / 9 * overlay.zoomX / overlay.zoomY).map(function(guide){
+            return '<i class="safe-guide safe-' + guide.kind + '" style="left:' + guide.x + '%;top:' + guide.y + '%;width:' + guide.w + '%;height:' + guide.h + '%"></i>';
+        }).join('') + (settings.center ? '<i class="safe-center"></i>' : '') + '</div>';
+}
+
+function readVmixMixes(data){
+    var root = data.getElementsByTagName('vmix')[0];
+    var child = function(parent, name){ return parent && Array.from(parent.children).find(function(node){ return node.tagName === name; }); };
+    var keyFor = function(node){ return node && (vMixInputs.find(function(input){ return input.number === Number(node.textContent); }) || {}).key; };
+    var overlaysFor = function(parent){
+        var overlays = child(parent, 'overlays');
+        return overlays ? Array.from(overlays.children).map(keyFor).filter(Boolean) : [];
+    };
+    var main = {number: 1, previewKey: keyFor(child(root, 'preview')), programKey: keyFor(child(root, 'active')), overlayKeys: overlaysFor(root)};
+    var mixes = [main];
+    Array.from(data.getElementsByTagName('mix')).forEach(function(node){
+        var number = Number(node.getAttribute('number'));
+        if(number > 1 && number <= MultiviewModel.MAX_MIXES && Number.isInteger(number) && child(node, 'active')) {
+            mixes.push({number: number, previewKey: keyFor(child(node, 'preview')), programKey: keyFor(child(node, 'active')), overlayKeys: overlaysFor(node)});
+        }
+    });
+    mixes.sort(function(a, b){ return a.number - b.number; });
+    // vMix numbers actual Mix inputs in their input-list order. This also works
+    // after renaming a Mix, where its title no longer contains its bus number.
+    vMixInputs.filter(function(input){ return /^Mix$/i.test(input.type || ''); }).forEach(function(input, index){ input.mixNumber = index + 2; });
+    return mixes;
+}
+
 function tileSettingsClasses(overlay){
     var settings = getTileSettings(overlay.layerKey, overlay.inputKey);
     var classes = [];
@@ -406,12 +452,6 @@ function tileSettingsClasses(overlay){
 function vMixRefresh(data){
     lastResponse = data;
     var temporaryMultiViewOverlays = []
-    vMixSettings.previewNumber = parseFloat(data.getElementsByTagName("preview")[0].innerHTML)
-    vMixSettings.programNumber = parseFloat(data.getElementsByTagName("active")[0].innerHTML)
-    var previewInput = data.querySelector(`input[number="${vMixSettings.previewNumber}"]`);
-    var programInput = data.querySelector(`input[number="${vMixSettings.programNumber}"]`);
-    vMixSettings.previewKey = previewInput ? previewInput.getAttribute("key") : "";
-    vMixSettings.programKey = programInput ? programInput.getAttribute("key") : "";
     var audioBuses = {};
     var audio = data.getElementsByTagName("audio")[0];
     if(audio) Array.from(audio.children).forEach(function(bus){
@@ -433,7 +473,9 @@ function vMixRefresh(data){
                 var value = Number(position.getAttribute(name));
                 if(position.hasAttribute(name) && Number.isFinite(value)) geometry[name] = value * 100;
             });
-            return {index: overlay.hasAttribute("index") ? Number(overlay.getAttribute("index")) : ordinal, inputKey: overlay.getAttribute("key"), position: geometry};
+            var enabled = !/^(false|0)$/i.test(overlay.getAttribute('enabled') || overlay.getAttribute('visible') || 'true');
+            return {index: overlay.hasAttribute("index") ? Number(overlay.getAttribute("index")) : ordinal, inputKey: overlay.getAttribute("key"), position: geometry,
+                ...(enabled ? {} : {enabled: false}), ...(overlay.hasAttribute('opacity') ? {opacity: Number(overlay.getAttribute('opacity'))} : {})};
         });
         Object.assign(vMixInputs[i], MultiviewModel.audioLevels({...vMixInputs[i], muted: input.getAttribute("muted"),
             meterF1: input.getAttribute("meterF1"), meterF2: input.getAttribute("meterF2")}, audioBuses));
@@ -447,6 +489,13 @@ function vMixRefresh(data){
         }
     })
     
+    vMixSettings.mixes = readVmixMixes(data);
+    vMixSettings.previewKey = vMixSettings.mixes[0].previewKey || '';
+    vMixSettings.programKey = vMixSettings.mixes[0].programKey || '';
+    vMixSettings.previewNumber = (getInputStateByKey(vMixSettings.previewKey) || {}).number;
+    vMixSettings.programNumber = (getInputStateByKey(vMixSettings.programKey) || {}).number;
+    vMixSettings.tallyGraph = MultiviewModel.tallyGraph(vMixInputs, vMixSettings.mixes);
+
     // Bind numeric legacy URLs to stable vMix IDs as soon as the XML is available.
     vMixSettings.multiViewInputs = vMixSettings.multiViewInputs.map(function(ref){
         var input = getInputStateBySourceReference(ref);
@@ -600,6 +649,8 @@ function getMixNumber(inputState){
         return undefined;
     }
 
+    var resolved = MultiviewModel.mixNumberFor(inputState, vMixInputs);
+    if(resolved) return resolved;
     var label = getInputLabel(inputState);
     var mixMatch = label.match(/\bmix\s*(\d+)\b/);
 
@@ -812,7 +863,8 @@ function refresh(){
             top:    ${((overlay.panY*-1)/2) + 50}%;
             ${getLayerStyleVariables(overlay)}
         ">
-        <div class="inputTitle" title="${escapeHTML(getLayerDisplayName(overlay))}">${escapeHTML(getLayerDisplayName(overlay))}</div>
+        ${generateSafeArea(overlay)}
+        <div class="layerTitleBand"><span class="layerTally layerTallyPreview">${generateTallyLights(getLayerTally(overlay), 'preview')}</span><div class="inputTitle" title="${escapeHTML(getLayerDisplayName(overlay))}">${escapeHTML(getLayerDisplayName(overlay))}</div><span class="layerTally layerTallyProgram">${generateTallyLights(getLayerTally(overlay), 'program')}</span></div>
         ${getLayerMonitorRole(vMixInputs[inputIndex]) ? '<span class="layerRoleBadge">' + (getLayerMonitorRole(vMixInputs[inputIndex]) === 'PGM' ? 'PROGRAM' : 'PREVIEW') + '</span>' : ''}
         ${generateVU(inputIndex != -1 && vMixInputs[inputIndex].audio && getTileSettings(overlay.layerKey, overlay.inputKey).vu, overlay)}
         ${generateLayerTimer(inputIndex != -1 ? vMixInputs[inputIndex] : undefined, overlay)}
@@ -836,8 +888,15 @@ function updateTally(force){
         var settings = getTileSettings(overlay.layerKey, overlay.inputKey);
         var tile = $(document.getElementById(overlay.layerKey));
 
-        var tally = MultiviewModel.tallyState(settings, overlay.inputKey, vMixSettings.previewKey, vMixSettings.programKey);
-        if(tally) tile.addClass(tally);
+        var tally = getLayerTally(overlay);
+        if(tally.state) tile.addClass(tally.state);
+        ['preview', 'program'].forEach(function(state){
+            var color = tally[state][0] ? tally[state][0].color : settings[state + 'Color'];
+            tile.css('--layer-' + state + '-color', color);
+            var lights = tile.find(state === 'preview' ? '.layerTallyPreview' : '.layerTallyProgram');
+            var html = generateTallyLights(tally, state);
+            if(lights.html() !== html) lights.html(html);
+        });
     });
 
     vMixSettings.previousPreviewKey = vMixSettings.previewKey

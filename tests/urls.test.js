@@ -49,6 +49,28 @@ function viewer(href, {stored = {}, remote = null, studio = false} = {}) {
     return {scope, calls, warnings, storage, recalled: () => M.unpack(JSON.parse(M.urlParameters(attributes.get('#configureLink:href')).get('Config')))};
 }
 
+test('side tally palettes and safe areas load in fresh viewers from portable, compressed and legacy fallback links', () => {
+    const screen = {...M.screen(['root']), theme: 'tally-sides', safeArea: {...M.safeAreaDefaults, enabled: true, center: true, aspect: '4:3'},
+        tallyMixes: [{mix: 2, enabled: true, previewColor: '#abc123', programColor: '#def456'}],
+        tiles: [{key: 'tile', value: {safeArea: false, tallyMix: 2}}]};
+    const config = {version: 1, pc: 'tally-fixture', host: 'localhost', port: '8088', updated: 1, screens: [screen]};
+    for(const href of [M.recallURL('http://localhost/', config, 0), M.browserRecallURL('http://localhost/', config, 0),
+        M.recallURL('http://localhost/', config, 0, {portable: false})]) {
+        const {scope} = viewer(href, {studio: true});
+        assert.equal(scope.vMixSettings.theme, 'tally-sides');
+        assert.deepEqual(M.clone(scope.vMixSettings.safeArea), screen.safeArea);
+        assert.deepEqual(M.clone(scope.vMixSettings.tallyMixes), screen.tallyMixes);
+        assert.equal(scope.getTileSettings('tile', 'cam').safeArea, false);
+        assert.equal(scope.getTileSettings('tile', 'cam').tallyMix, 2);
+    }
+    const invalid = viewer('http://localhost/index.html?Inputs=key:root&SafeArea=' + encodeURIComponent('{"color":"red"}'), {studio: true});
+    assert.equal(invalid.scope.vMixSettings.safeArea.enabled, false);
+    assert.equal(invalid.warnings.length, 1);
+    screen.safeArea.enabled = false;
+    const disabled = viewer(M.recallURL('http://localhost/', config, 0, {portable: false}), {studio: true});
+    assert.deepEqual(disabled.recalled().screens[0].safeArea, screen.safeArea);
+});
+
 test('the supplied old URL restores both input IDs, its three extras and disabled layer 9', () => {
     const {scope, warnings} = viewer(oldURL);
     assert.deepEqual(M.clone(scope.vMixSettings.multiViewInputs), [first, second]);
